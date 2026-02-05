@@ -449,44 +449,85 @@
         // where θ = rotation angle, d = linear displacement, r = pinion radius
         const pinionRadius = 0.8;
         const gearRatio = 5; // Motor spins 5x faster than pinion (simulating gear train)
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // ... [Keep your existing SCENE SETUP and LIGHTING] ...
+
+        // ============================================
+        // PATCHED COMPONENTS: ADDING REAL TEETH
+        // ============================================
+
+        // 1. TOOTHED RACK (Vertical)
+        const rackGroup = new THREE.Group();
+        const rackBody = new THREE.Mesh(new THREE.BoxGeometry(0.4, 4, 0.4), rackMaterial);
+        rackGroup.add(rackBody);
         
+        // Add physical teeth to the rack
+        const rackToothGeom = new THREE.BoxGeometry(0.2, 0.1, 0.3);
+        for(let i = 0; i < 16; i++) {
+            const tooth = new THREE.Mesh(rackToothGeom, rackMaterial);
+            // Orient teeth to face the pinion (+X direction)
+            tooth.position.set(0.25, -1.8 + (i * 0.25), 0);
+            rackGroup.add(tooth);
+        }
+        rackGroup.position.set(-1.2, 2, 0);
+        scene.add(rackGroup);
+
+        // 2. PINION & MOTOR (Horizontal Axis Rotation)
+        const transmission = new THREE.Group();
+
+        // Pinion with actual teeth
+        const pinionGroup = new THREE.Group();
+        const pinionRadius = 0.75;
+        pinionGroup.add(new THREE.Mesh(new THREE.CylinderGeometry(pinionRadius, pinionRadius, 0.4, 32), pinionMaterial));
+        
+        const gearToothGeom = new THREE.BoxGeometry(0.2, 0.25, 0.15);
+        for(let i = 0; i < 12; i++) {
+            const angle = (i/12) * Math.PI * 2;
+            const tooth = new THREE.Mesh(gearToothGeom, pinionMaterial);
+            tooth.position.set(Math.cos(angle)*pinionRadius, 0, Math.sin(angle)*pinionRadius);
+            tooth.rotation.y = angle;
+            pinionGroup.add(tooth);
+        }
+        // REAL-LIFE ORIENTATION: Flip gear to stand vertically on the X-axis
+        pinionGroup.rotation.z = Math.PI / 2;
+        transmission.add(pinionGroup);
+
+        // Motor (Share the same transmission shaft)
+        const motorBody = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 1.5, 32), motorMaterial);
+        motorBody.rotation.z = Math.PI / 2;
+        motorBody.position.x = 1.2;
+        transmission.add(motorBody);
+
+        transmission.position.set(-0.35, 1, 0);
+        scene.add(transmission);
+
+        // ... [Keep your existing ELECTRON pool and state] ...
+
+        // ============================================
+        // PATCHED PHYSICS: AXIS CORRECTION
+        // ============================================
         function updatePhysics() {
-            // Update pedal position with smooth interpolation
             const lerpFactor = 0.1 * state.compressionSpeed;
+            const oldY = state.pedalPosition;
             state.pedalPosition += (state.targetPedalPosition - state.pedalPosition) * lerpFactor;
             pedal.position.y = state.pedalPosition;
             
-            // Calculate rack displacement from pedal
-            // Pedal at y=2 (rest), y=0 (fully compressed)
-            const rackDisplacement = 2 - state.pedalPosition;
-            state.rackPosition = 0.5 - rackDisplacement;
-            rackGroup.position.y = state.rackPosition;
+            // Rack moves with pedal
+            rackGroup.position.y = state.pedalPosition - 1;
             
-            // Convert linear rack motion to pinion rotation
-            // Using: rotation = distance / radius
-            const linearDistance = rackDisplacement;
-            const pinionRotationDelta = linearDistance / pinionRadius;
-            state.pinionRotation = pinionRotationDelta;
-            pinionGroup.rotation.y = state.pinionRotation;
+            // MATH: Vertical Distance / Radius = Angular Rotation
+            const deltaY = oldY - state.pedalPosition;
+            const rotationDelta = deltaY / pinionRadius;
             
-            // Motor rotates faster due to gear ratio
-            state.motorRotation = state.pinionRotation * gearRatio;
-            motorGroup.rotation.x = state.motorRotation;
-            
-            // Calculate motor RPM based on rotation speed
-            // RPM = (rotations per frame * frames per second * 60)
-            const rotationsPerFrame = Math.abs(state.motorSpeed);
-            state.motorRPM = Math.round(rotationsPerFrame * 60 * 60); // Approximate at 60 FPS
-            
-            // Current output scales with motor speed (simplified model)
-            const currentOutput = Math.round(Math.abs(state.motorSpeed) * 100);
-            
-            // Update UI
-            document.getElementById('motor-rpm').textContent = state.motorRPM;
-            document.getElementById('current').textContent = currentOutput + ' mA';
+            // REAL PHYSICS: The transmission rotates around the X-axis
+            transmission.rotation.x += rotationDelta;
+
+            // ... [Keep your existing UI updates] ...
         }
-        
-        // ============================================
+
+        // ... [Keep the rest of your animate loop] ...
+    </script>// ============================================
         // ELECTRON FLOW ANIMATION
         // ============================================
         
