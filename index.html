@@ -2,144 +2,140 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mechanical Engineering Sim - Real Physics</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shoe Generator - Real Physics Build</title>
     <style>
-        body { margin: 0; background: #111; font-family: 'Courier New', Courier, monospace; overflow: hidden; }
-        #ui { position: absolute; top: 20px; left: 20px; background: rgba(0,0,0,0.8); color: #0f0; padding: 20px; border: 1px solid #0f0; border-radius: 5px; z-index: 10; width: 300px; }
-        button { width: 100%; padding: 15px; background: #0f0; color: #000; border: none; font-weight: bold; cursor: pointer; margin-bottom: 10px; }
-        .stat { display: flex; justify-content: space-between; margin-bottom: 5px; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #1a1a2e; overflow: hidden; }
+        #canvas-container { width: 100vw; height: 100vh; display: block; }
+        #controls { position: absolute; top: 20px; left: 20px; background: rgba(255, 255, 255, 0.95); padding: 20px; border-radius: 12px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3); min-width: 280px; z-index: 100; }
+        h1 { font-size: 18px; margin-bottom: 15px; color: #1e3c72; border-bottom: 2px solid #2a5298; padding-bottom: 8px; }
+        button { width: 100%; padding: 12px; margin: 5px 0; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; text-transform: uppercase; }
+        #press-pedal { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+        #reset { background: #f39c12; color: white; }
+        input[type="range"] { width: 100%; margin: 8px 0; }
+        .info-display { background: #ecf0f1; padding: 10px; border-radius: 6px; margin-top: 10px; font-size: 12px; }
+        .info-item { display: flex; justify-content: space-between; margin: 5px 0; }
+        .info-value { color: #2a5298; font-weight: 700; }
+        #info { position: absolute; bottom: 20px; left: 20px; background: rgba(255, 255, 255, 0.95); padding: 15px; border-radius: 12px; font-size: 12px; max-width: 280px; z-index: 100; }
     </style>
 </head>
 <body>
-
-    <div id="ui">
-        <h2>ENGINEERING SIM</h2>
-        <button id="pedal">STEP ON PEDAL</button>
-        <div class="stat"><span>RACK POS:</span> <span id="rack-y">0.00</span></div>
-        <div class="stat"><span>PINION ROT:</span> <span id="pinion-deg">0.0°</span></div>
-        <div class="stat"><span>MOTOR RPM:</span> <span id="rpm">0</span></div>
-        <p><small>> DRAG TO ROTATE VIEW</small></p>
+    <div id="canvas-container"></div>
+    <div id="controls">
+        <h1>⚡ Shoe Generator Control</h1>
+        <div class="control-group">
+            <button id="press-pedal">Press Foot Pedal</button>
+            <button id="reset">Reset Simulation</button>
+        </div>
+        <div class="control-group">
+            <label>Compression Speed: <span id="speed-value">5</span></label>
+            <input type="range" id="speed" min="1" max="10" value="5">
+        </div>
+        <div class="info-display">
+            <div class="info-item"><span>Electrons:</span> <span class="info-value" id="electron-count">0</span></div>
+            <div class="info-item"><span>Motor RPM:</span> <span class="info-value" id="motor-rpm">0</span></div>
+            <div class="info-item"><span>Current:</span> <span class="info-value" id="current">0 mA</span></div>
+        </div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-
     <script>
-        // --- 1. SCENE SETUP ---
+        // --- SCENE SETUP ---
         const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 1000);
-        camera.position.set(5, 4, 5);
+        scene.background = new THREE.Color(0x0a0a1a);
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+        camera.position.set(5, 4, 6);
 
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
-        document.body.appendChild(renderer.domElement);
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
 
-        const controls = new THREE.OrbitControls(camera, renderer.domElement);
-        
         // Lighting
-        const sun = new THREE.DirectionalLight(0xffffff, 1.5);
-        sun.position.set(10, 10, 10);
-        scene.add(sun);
-        scene.add(new THREE.AmbientLight(0xffffff, 0.3));
+        scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+        dirLight.position.set(10, 10, 5);
+        scene.add(dirLight);
 
-        // --- 2. MATERIALS ---
-        const matSteel = new THREE.MeshStandardMaterial({ color: 0x777777, metalness: 0.8, roughness: 0.2 });
-        const matBrass = new THREE.MeshStandardMaterial({ color: 0xb5a642, metalness: 0.7, roughness: 0.3 });
-        const matMotor = new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.9 });
+        // --- MATERIALS ---
+        const matSteel = new THREE.MeshStandardMaterial({ color: 0x7f8c8d, metalness: 0.8, roughness: 0.2 });
+        const matGear = new THREE.MeshStandardMaterial({ color: 0xe74c3c, metalness: 0.5 });
+        const matMotor = new THREE.MeshStandardMaterial({ color: 0x2c3e50, metalness: 0.9 });
 
-        // --- 3. THE RACK (Vertical Force) ---
+        // --- MECHANICAL COMPONENTS ---
+
+        // 1. TOOTHED RACK
         const rackGroup = new THREE.Group();
-        const rackBody = new THREE.Mesh(new THREE.BoxGeometry(0.3, 4, 0.4), matSteel);
-        rackGroup.add(rackBody);
-
-        // REAL TEETH: Orientated to face the motor side (+X direction)
+        const rackBody = new THREE.Mesh(new THREE.BoxGeometry(0.4, 4, 0.4), matSteel);
+        rackGroup.add(rackBar = rackBody);
+        
+        // Add Real Teeth to Rack (Oriented towards Gear)
         for(let i=0; i<16; i++) {
-            const tooth = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.08, 0.3), matSteel);
-            tooth.position.set(0.18, -1.8 + (i * 0.25), 0);
+            const tooth = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.08, 0.3), matSteel);
+            tooth.position.set(0.25, -1.8 + (i * 0.25), 0);
             rackGroup.add(tooth);
         }
-        rackGroup.position.set(-1, 2, 0); // Offset to mesh
+        rackGroup.position.set(-1.2, 2, 0);
         scene.add(rackGroup);
 
-        // --- 4. THE PINION & MOTOR (Horizontal Axis) ---
-        // Both exist on the X-axis to rotate the same way
-        const transmissionGroup = new THREE.Group();
+        // 2. PINION & MOTOR ASSEMBLY (Horizontal Axis Rotation)
+        const transmission = new THREE.Group();
 
-        // The Gear (Pinion)
+        // Pinion Gear (Vertical Orientation)
+        const pinionGroup = new THREE.Group();
         const gearRadius = 0.75;
-        const gearGroup = new THREE.Group();
-        const gearCore = new THREE.Mesh(new THREE.CylinderGeometry(gearRadius, gearRadius, 0.3, 32), matBrass);
-        gearCore.rotation.z = Math.PI / 2; // Lay flat on X-axis
-        gearGroup.add(gearCore);
-
-        // Meshing Teeth
+        pinionGroup.add(new THREE.Mesh(new THREE.CylinderGeometry(gearRadius, gearRadius, 0.3, 32), matGear));
+        
+        // Pinion Teeth
         for(let i=0; i<12; i++) {
             const angle = (i/12) * Math.PI * 2;
-            const tooth = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.3, 0.1), matBrass);
-            tooth.position.set(0, Math.cos(angle)*gearRadius, Math.sin(angle)*gearRadius);
-            tooth.rotation.x = -angle;
-            gearGroup.add(tooth);
+            const tooth = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.3, 0.1), matGear);
+            tooth.position.set(Math.cos(angle)*gearRadius, 0, Math.sin(angle)*gearRadius);
+            tooth.rotation.y = angle;
+            pinionGroup.add(tooth);
         }
-        transmissionGroup.add(gearGroup);
+        pinionGroup.rotation.z = Math.PI / 2; // Flip to vertical
+        transmission.add(pinionGroup);
 
-        // The Motor (Attached to the same shaft)
-        const motor = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 1.2, 32), matMotor);
+        // Motor (Horizontal orientation)
+        const motor = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 1.5, 32), matMotor);
         motor.rotation.z = Math.PI / 2;
-        motor.position.x = 1.0; // Pushed along X-axis
-        transmissionGroup.add(motor);
+        motor.position.x = 1.2;
+        transmission.add(motor);
+
+        transmission.position.set(-0.3, 1, 0); // Meshed position
+        scene.add(transmission);
+
+        // --- LOGIC & ANIMATION ---
+        const state = { pedalY: 2, targetY: 2, electrons: 0, speed: 5 };
+
+        document.getElementById('press-pedal').onmousedown = () => state.targetY = 0.2;
+        document.getElementById('press-pedal').onmouseup = () => state.targetY = 2;
         
-        // Shaft connecting them
-        const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 2, 16), matSteel);
-        shaft.rotation.z = Math.PI / 2;
-        shaft.position.x = 0.5;
-        transmissionGroup.add(shaft);
-
-        transmissionGroup.position.set(-0.2, 1, 0);
-        scene.add(transmissionGroup);
-
-        // --- 5. PHYSICS ENGINE ---
-        let rackY = 2;
-        let targetY = 2;
-        const pedal = document.getElementById('pedal');
-
-        pedal.onmousedown = () => targetY = 0;
-        pedal.onmouseup = () => targetY = 2;
-
         function animate() {
             requestAnimationFrame(animate);
-
-            // Smooth linear interpolation (Lerp)
-            const oldY = rackY;
-            rackY += (targetY - rackY) * 0.1;
-            rackGroup.position.y = rackY;
-
-            // REAL PHYSICS CALCULATION
-            // Distance moved = Rack Delta
-            const deltaY = oldY - rackY;
             
-            // Angle = Distance / Radius
-            const rotationAngle = deltaY / gearRadius;
+            const lastY = state.pedalY;
+            state.pedalY += (state.targetY - state.pedalY) * 0.1 * state.speed;
             
-            // Apply rotation to the entire transmission (Gear + Shaft + Motor)
-            transmissionGroup.rotation.x += rotationAngle;
+            // Move Rack
+            rackGroup.position.y = state.pedalY - 1;
+            
+            // Physics: Rotation = Distance / Radius
+            const deltaY = lastY - state.pedalY;
+            const rotationDelta = deltaY / gearRadius;
+            
+            // Vertical Rack translates to X-axis rotation of transmission
+            transmission.rotation.x += rotationDelta;
 
-            // UI Updates
-            document.getElementById('rack-y').innerText = rackY.toFixed(2);
-            document.getElementById('pinion-deg').innerText = (transmissionGroup.rotation.x * 57.29).toFixed(1) + "°";
-            document.getElementById('rpm').innerText = Math.round(Math.abs(deltaY) * 6000);
+            // Stats Update
+            const rpm = Math.abs(deltaY) * 6000;
+            document.getElementById('motor-rpm').innerText = Math.round(rpm);
+            document.getElementById('current').innerText = Math.round(rpm * 0.2) + " mA";
 
-            controls.update();
             renderer.render(scene, camera);
         }
-
         animate();
-
-        // Handle window resizing
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
     </script>
 </body>
 </html>
