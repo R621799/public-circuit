@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shoe Generator - Rack & Pinion Energy Harvesting Simulation</title>
+    <title>Shoe Generator - Zero Dependency Version</title>
     <style>
         * {
             margin: 0;
@@ -155,10 +155,14 @@
             text-align: center;
             margin-top: 8px;
         }
+
+        canvas {
+            display: block;
+        }
     </style>
 </head>
 <body>
-    <div id="canvas-container"></div>
+    <canvas id="canvas-container"></canvas>
     
     <div id="controls">
         <h1>⚡ Shoe Generator Control</h1>
@@ -200,364 +204,404 @@
         <p><strong>4. Electron Flow:</strong> Yellow spheres represent electron movement through the wire.</p>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
         // ============================================
-        // EMBEDDED ORBIT CONTROLS
+        // PURE CANVAS 3D ENGINE - NO DEPENDENCIES
         // ============================================
-        (function() {
-            THREE.OrbitControls = function(camera, domElement) {
-                this.camera = camera;
-                this.domElement = domElement || document;
-                
-                this.target = new THREE.Vector3();
-                this.enabled = true;
-                this.enableDamping = false;
-                this.dampingFactor = 0.05;
-                this.enableZoom = true;
-                this.enableRotate = true;
-                this.rotateSpeed = 1.0;
-                this.zoomSpeed = 1.0;
-                
-                var scope = this;
-                var STATE = { NONE: -1, ROTATE: 0, ZOOM: 1 };
-                var state = STATE.NONE;
-                
-                var spherical = new THREE.Spherical();
-                var sphericalDelta = new THREE.Spherical();
-                var scale = 1;
-                var rotateStart = new THREE.Vector2();
-                var rotateEnd = new THREE.Vector2();
-                var rotateDelta = new THREE.Vector2();
-                
-                this.update = function() {
-                    var offset = new THREE.Vector3();
-                    var quat = new THREE.Quaternion().setFromUnitVectors(
-                        camera.up, new THREE.Vector3(0, 1, 0)
-                    );
-                    var quatInverse = quat.clone().invert();
-                    
-                    return function() {
-                        var position = scope.camera.position;
-                        offset.copy(position).sub(scope.target);
-                        offset.applyQuaternion(quat);
-                        spherical.setFromVector3(offset);
-                        
-                        spherical.theta += sphericalDelta.theta;
-                        spherical.phi += sphericalDelta.phi;
-                        spherical.phi = Math.max(0.1, Math.min(Math.PI - 0.1, spherical.phi));
-                        spherical.radius *= scale;
-                        spherical.radius = Math.max(3, Math.min(50, spherical.radius));
-                        
-                        offset.setFromSpherical(spherical);
-                        offset.applyQuaternion(quatInverse);
-                        position.copy(scope.target).add(offset);
-                        scope.camera.lookAt(scope.target);
-                        
-                        if (scope.enableDamping) {
-                            sphericalDelta.theta *= (1 - scope.dampingFactor);
-                            sphericalDelta.phi *= (1 - scope.dampingFactor);
-                        } else {
-                            sphericalDelta.set(0, 0, 0);
-                        }
-                        
-                        scale = 1;
-                    };
-                }();
-                
-                function getZoomScale() {
-                    return Math.pow(0.95, scope.zoomSpeed);
-                }
-                
-                function onMouseDown(event) {
-                    if (!scope.enabled) return;
-                    event.preventDefault();
-                    if (event.button === 0) {
-                        state = STATE.ROTATE;
-                        rotateStart.set(event.clientX, event.clientY);
-                    }
-                    scope.domElement.addEventListener('mousemove', onMouseMove, false);
-                    scope.domElement.addEventListener('mouseup', onMouseUp, false);
-                }
-                
-                function onMouseMove(event) {
-                    if (!scope.enabled) return;
-                    event.preventDefault();
-                    
-                    if (state === STATE.ROTATE) {
-                        rotateEnd.set(event.clientX, event.clientY);
-                        rotateDelta.subVectors(rotateEnd, rotateStart).multiplyScalar(scope.rotateSpeed);
-                        
-                        var element = scope.domElement;
-                        sphericalDelta.theta -= 2 * Math.PI * rotateDelta.x / element.clientHeight;
-                        sphericalDelta.phi -= 2 * Math.PI * rotateDelta.y / element.clientHeight;
-                        
-                        rotateStart.copy(rotateEnd);
-                        scope.update();
-                    }
-                }
-                
-                function onMouseUp(event) {
-                    if (!scope.enabled) return;
-                    scope.domElement.removeEventListener('mousemove', onMouseMove, false);
-                    scope.domElement.removeEventListener('mouseup', onMouseUp, false);
-                    state = STATE.NONE;
-                }
-                
-                function onMouseWheel(event) {
-                    if (!scope.enabled || !scope.enableZoom) return;
-                    event.preventDefault();
-                    event.stopPropagation();
-                    
-                    if (event.deltaY < 0) {
-                        scale /= getZoomScale();
-                    } else if (event.deltaY > 0) {
-                        scale *= getZoomScale();
-                    }
-                    
-                    scope.update();
-                }
-                
-                this.domElement.addEventListener('mousedown', onMouseDown, false);
-                this.domElement.addEventListener('wheel', onMouseWheel, false);
-                this.domElement.addEventListener('contextmenu', function(e) { e.preventDefault(); }, false);
-                
-                this.update();
+        
+        const canvas = document.getElementById('canvas-container');
+        const ctx = canvas.getContext('2d');
+        
+        // Set canvas size
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        
+        // ============================================
+        // 3D MATH UTILITIES
+        // ============================================
+        
+        class Vec3 {
+            constructor(x = 0, y = 0, z = 0) {
+                this.x = x;
+                this.y = y;
+                this.z = z;
+            }
+            
+            add(v) {
+                return new Vec3(this.x + v.x, this.y + v.y, this.z + v.z);
+            }
+            
+            sub(v) {
+                return new Vec3(this.x - v.x, this.y - v.y, this.z - v.z);
+            }
+            
+            mul(s) {
+                return new Vec3(this.x * s, this.y * s, this.z * s);
+            }
+            
+            length() {
+                return Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z);
+            }
+            
+            normalize() {
+                const len = this.length();
+                return len > 0 ? new Vec3(this.x / len, this.y / len, this.z / len) : new Vec3();
+            }
+            
+            dot(v) {
+                return this.x * v.x + this.y * v.y + this.z * v.z;
+            }
+            
+            cross(v) {
+                return new Vec3(
+                    this.y * v.z - this.z * v.y,
+                    this.z * v.x - this.x * v.z,
+                    this.x * v.y - this.y * v.x
+                );
+            }
+        }
+        
+        // ============================================
+        // CAMERA & PROJECTION
+        // ============================================
+        
+        const camera = {
+            pos: new Vec3(8, 6, 8),
+            target: new Vec3(0, 0.5, 0),
+            fov: 75,
+            near: 0.1,
+            far: 1000,
+            
+            // Orbit controls
+            theta: Math.PI / 4,
+            phi: Math.PI / 4,
+            radius: 12,
+            
+            update() {
+                this.pos.x = this.target.x + this.radius * Math.sin(this.phi) * Math.cos(this.theta);
+                this.pos.y = this.target.y + this.radius * Math.cos(this.phi);
+                this.pos.z = this.target.z + this.radius * Math.sin(this.phi) * Math.sin(this.theta);
+            }
+        };
+        
+        function project(point) {
+            // Transform to camera space
+            const dir = point.sub(camera.pos);
+            const forward = camera.target.sub(camera.pos).normalize();
+            const right = new Vec3(0, 1, 0).cross(forward).normalize();
+            const up = forward.cross(right);
+            
+            const x = dir.dot(right);
+            const y = dir.dot(up);
+            const z = dir.dot(forward);
+            
+            if (z <= 0.1) return null; // Behind camera
+            
+            // Project to screen
+            const scale = (canvas.height / 2) / Math.tan((camera.fov * Math.PI / 180) / 2);
+            const screenX = canvas.width / 2 + (x / z) * scale;
+            const screenY = canvas.height / 2 - (y / z) * scale;
+            
+            return { x: screenX, y: screenY, z: z };
+        }
+        
+        // ============================================
+        // 3D SHAPES
+        // ============================================
+        
+        function createBox(w, h, d, color) {
+            return {
+                type: 'box',
+                width: w,
+                height: h,
+                depth: d,
+                color: color,
+                pos: new Vec3(),
+                rot: new Vec3()
             };
-        })();
-
-        // ============================================
-        // SCENE SETUP
-        // ============================================
-        
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x1a1a2e);
-        
-        const camera = new THREE.PerspectiveCamera(
-            75,
-            window.innerWidth / window.innerHeight,
-            0.1,
-            1000
-        );
-        camera.position.set(8, 6, 8);
-        camera.lookAt(0, 0, 0);
-        
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.shadowMap.enabled = true;
-        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-        document.getElementById('canvas-container').appendChild(renderer.domElement);
-        
-        // Add orbit controls
-        const controls = new THREE.OrbitControls(camera, renderer.domElement);
-        controls.enableDamping = true;
-        controls.dampingFactor = 0.05;
-        controls.target.set(0, 0.5, 0);
-        
-        // ============================================
-        // LIGHTING
-        // ============================================
-        
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-        scene.add(ambientLight);
-        
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-        directionalLight.position.set(10, 10, 5);
-        directionalLight.castShadow = true;
-        directionalLight.shadow.mapSize.width = 2048;
-        directionalLight.shadow.mapSize.height = 2048;
-        scene.add(directionalLight);
-        
-        const pointLight = new THREE.PointLight(0x4a90e2, 0.5);
-        pointLight.position.set(-5, 5, 5);
-        scene.add(pointLight);
-        
-        // ============================================
-        // MATERIALS
-        // ============================================
-        
-        const pedalMaterial = new THREE.MeshStandardMaterial({ 
-            color: 0x34495e,
-            metalness: 0.3,
-            roughness: 0.7
-        });
-        
-        const rackMaterial = new THREE.MeshStandardMaterial({ 
-            color: 0x7f8c8d,
-            metalness: 0.6,
-            roughness: 0.4
-        });
-        
-        const pinionMaterial = new THREE.MeshStandardMaterial({ 
-            color: 0xe74c3c,
-            metalness: 0.7,
-            roughness: 0.3
-        });
-        
-        const motorMaterial = new THREE.MeshStandardMaterial({ 
-            color: 0x2c3e50,
-            metalness: 0.8,
-            roughness: 0.2
-        });
-        
-        const wireMaterial = new THREE.MeshStandardMaterial({ 
-            color: 0x95a5a6,
-            metalness: 0.5,
-            roughness: 0.5
-        });
-        
-        const electronMaterial = new THREE.MeshStandardMaterial({ 
-            color: 0xffff00,
-            emissive: 0xffff00,
-            emissiveIntensity: 0.5,
-            metalness: 0.1,
-            roughness: 0.3
-        });
-        
-        // ============================================
-        // COMPONENTS
-        // ============================================
-        
-        // Base Platform
-        const baseGeometry = new THREE.BoxGeometry(6, 0.3, 6);
-        const baseMaterial = new THREE.MeshStandardMaterial({ 
-            color: 0x2c3e50,
-            metalness: 0.4,
-            roughness: 0.6
-        });
-        const base = new THREE.Mesh(baseGeometry, baseMaterial);
-        base.position.y = -2;
-        base.receiveShadow = true;
-        scene.add(base);
-        
-        // Foot Pedal
-        const pedalGeometry = new THREE.BoxGeometry(2.5, 0.4, 2.5);
-        const pedal = new THREE.Mesh(pedalGeometry, pedalMaterial);
-        pedal.position.set(0, 2, 0);
-        pedal.castShadow = true;
-        scene.add(pedal);
-        
-        // Rack (vertical bar with teeth)
-        const rackGroup = new THREE.Group();
-        
-        // Main rack body
-        const rackBodyGeometry = new THREE.BoxGeometry(0.4, 3, 0.8);
-        const rackBody = new THREE.Mesh(rackBodyGeometry, rackMaterial);
-        rackBody.castShadow = true;
-        rackGroup.add(rackBody);
-        
-        // Rack teeth (simulate gear teeth on one side)
-        const toothGeometry = new THREE.BoxGeometry(0.2, 0.15, 0.8);
-        const numTeeth = 12;
-        for (let i = 0; i < numTeeth; i++) {
-            const tooth = new THREE.Mesh(toothGeometry, rackMaterial);
-            tooth.position.set(0.3, -1.5 + (i * 0.25), 0);
-            tooth.castShadow = true;
-            rackGroup.add(tooth);
         }
         
-        rackGroup.position.set(-2, 0.5, 0);
-        scene.add(rackGroup);
-        
-        // Pinion Gear (circular gear that meshes with rack)
-        const pinionGroup = new THREE.Group();
-        
-        // Main gear cylinder
-        const pinionBodyGeometry = new THREE.CylinderGeometry(0.8, 0.8, 0.6, 32);
-        const pinionBody = new THREE.Mesh(pinionBodyGeometry, pinionMaterial);
-        pinionBody.rotation.z = Math.PI / 2;
-        pinionBody.castShadow = true;
-        pinionGroup.add(pinionBody);
-        
-        // Pinion teeth (protruding from circumference)
-        const pinionToothGeometry = new THREE.BoxGeometry(0.15, 0.6, 0.2);
-        const numPinionTeeth = 16;
-        for (let i = 0; i < numPinionTeeth; i++) {
-            const angle = (i / numPinionTeeth) * Math.PI * 2;
-            const tooth = new THREE.Mesh(pinionToothGeometry, pinionMaterial);
-            tooth.position.set(Math.cos(angle) * 0.9, 0, Math.sin(angle) * 0.9);
-            tooth.rotation.y = angle;
-            tooth.castShadow = true;
-            pinionGroup.add(tooth);
+        function createCylinder(radius, height, color) {
+            return {
+                type: 'cylinder',
+                radius: radius,
+                height: height,
+                color: color,
+                pos: new Vec3(),
+                rot: new Vec3()
+            };
         }
         
-        // Shaft connecting pinion to motor
-        const shaftGeometry = new THREE.CylinderGeometry(0.15, 0.15, 2, 16);
-        const shaft = new THREE.Mesh(shaftGeometry, new THREE.MeshStandardMaterial({ 
-            color: 0x7f8c8d,
-            metalness: 0.9,
-            roughness: 0.1
-        }));
-        shaft.rotation.z = Math.PI / 2;
-        shaft.position.x = 1;
-        shaft.castShadow = true;
-        pinionGroup.add(shaft);
+        function createSphere(radius, color) {
+            return {
+                type: 'sphere',
+                radius: radius,
+                color: color,
+                pos: new Vec3(),
+                visible: true
+            };
+        }
         
-        pinionGroup.position.set(-0.7, 0.5, 0);
-        scene.add(pinionGroup);
+        function rotatePoint(p, rot) {
+            // Rotate around Y
+            let x = p.x * Math.cos(rot.y) - p.z * Math.sin(rot.y);
+            let z = p.x * Math.sin(rot.y) + p.z * Math.cos(rot.y);
+            
+            // Rotate around X
+            let y = p.y * Math.cos(rot.x) - z * Math.sin(rot.x);
+            z = p.y * Math.sin(rot.x) + z * Math.cos(rot.x);
+            
+            // Rotate around Z
+            let x2 = x * Math.cos(rot.z) - y * Math.sin(rot.z);
+            y = x * Math.sin(rot.z) + y * Math.cos(rot.z);
+            
+            return new Vec3(x2, y, z);
+        }
         
-        // Motor (BLDC Generator)
-        const motorGroup = new THREE.Group();
+        function drawBox(box) {
+            const hw = box.width / 2, hh = box.height / 2, hd = box.depth / 2;
+            const corners = [
+                new Vec3(-hw, -hh, -hd), new Vec3(hw, -hh, -hd),
+                new Vec3(hw, hh, -hd), new Vec3(-hw, hh, -hd),
+                new Vec3(-hw, -hh, hd), new Vec3(hw, -hh, hd),
+                new Vec3(hw, hh, hd), new Vec3(-hw, hh, hd)
+            ];
+            
+            const rotated = corners.map(c => rotatePoint(c, box.rot).add(box.pos));
+            const projected = rotated.map(p => project(p)).filter(p => p !== null);
+            
+            if (projected.length < 4) return;
+            
+            // Calculate average depth for sorting
+            const avgZ = projected.reduce((sum, p) => sum + p.z, 0) / projected.length;
+            
+            // Draw faces
+            const faces = [
+                [0, 1, 2, 3], // front
+                [4, 5, 6, 7], // back
+                [0, 1, 5, 4], // bottom
+                [2, 3, 7, 6], // top
+                [0, 3, 7, 4], // left
+                [1, 2, 6, 5]  // right
+            ];
+            
+            faces.forEach(face => {
+                ctx.beginPath();
+                face.forEach((idx, i) => {
+                    if (idx < projected.length) {
+                        const p = projected[idx];
+                        if (i === 0) ctx.moveTo(p.x, p.y);
+                        else ctx.lineTo(p.x, p.y);
+                    }
+                });
+                ctx.closePath();
+                
+                // Lighting based on depth
+                const brightness = Math.max(0.3, Math.min(1, 1 - avgZ / 30));
+                const r = parseInt(box.color.slice(1, 3), 16) * brightness;
+                const g = parseInt(box.color.slice(3, 5), 16) * brightness;
+                const b = parseInt(box.color.slice(5, 7), 16) * brightness;
+                
+                ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            });
+            
+            return avgZ;
+        }
         
-        // Motor housing
-        const motorBodyGeometry = new THREE.CylinderGeometry(0.6, 0.6, 1.5, 32);
-        const motorBody = new THREE.Mesh(motorBodyGeometry, motorMaterial);
-        motorBody.rotation.z = Math.PI / 2;
-        motorBody.castShadow = true;
-        motorGroup.add(motorBody);
+        function drawCylinder(cyl) {
+            const segments = 16;
+            const radius = cyl.radius;
+            const height = cyl.height;
+            
+            // Create top and bottom circles
+            const topCircle = [];
+            const bottomCircle = [];
+            
+            for (let i = 0; i <= segments; i++) {
+                const angle = (i / segments) * Math.PI * 2;
+                const x = Math.cos(angle) * radius;
+                const z = Math.sin(angle) * radius;
+                
+                topCircle.push(rotatePoint(new Vec3(x, height / 2, z), cyl.rot).add(cyl.pos));
+                bottomCircle.push(rotatePoint(new Vec3(x, -height / 2, z), cyl.rot).add(cyl.pos));
+            }
+            
+            const topProj = topCircle.map(p => project(p)).filter(p => p);
+            const bottomProj = bottomCircle.map(p => project(p)).filter(p => p);
+            
+            if (topProj.length < 3 || bottomProj.length < 3) return;
+            
+            const avgZ = (topProj[0].z + bottomProj[0].z) / 2;
+            const brightness = Math.max(0.3, Math.min(1, 1 - avgZ / 30));
+            const r = parseInt(cyl.color.slice(1, 3), 16) * brightness;
+            const g = parseInt(cyl.color.slice(3, 5), 16) * brightness;
+            const b = parseInt(cyl.color.slice(5, 7), 16) * brightness;
+            
+            // Draw cylinder body
+            ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+            for (let i = 0; i < segments; i++) {
+                if (i < topProj.length - 1 && i < bottomProj.length - 1) {
+                    ctx.beginPath();
+                    ctx.moveTo(topProj[i].x, topProj[i].y);
+                    ctx.lineTo(topProj[i + 1].x, topProj[i + 1].y);
+                    ctx.lineTo(bottomProj[i + 1].x, bottomProj[i + 1].y);
+                    ctx.lineTo(bottomProj[i].x, bottomProj[i].y);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)';
+                    ctx.stroke();
+                }
+            }
+            
+            // Draw top cap
+            ctx.beginPath();
+            topProj.forEach((p, i) => {
+                if (i === 0) ctx.moveTo(p.x, p.y);
+                else ctx.lineTo(p.x, p.y);
+            });
+            ctx.closePath();
+            ctx.fillStyle = `rgb(${r * 1.2}, ${g * 1.2}, ${b * 1.2})`;
+            ctx.fill();
+            
+            return avgZ;
+        }
         
-        // Motor end caps
-        const endCapGeometry = new THREE.CylinderGeometry(0.65, 0.65, 0.1, 32);
-        const endCap1 = new THREE.Mesh(endCapGeometry, new THREE.MeshStandardMaterial({ 
-            color: 0x95a5a6,
-            metalness: 0.8,
-            roughness: 0.3
-        }));
-        endCap1.rotation.z = Math.PI / 2;
-        endCap1.position.x = 0.75;
-        endCap1.castShadow = true;
-        motorGroup.add(endCap1);
-        
-        const endCap2 = endCap1.clone();
-        endCap2.position.x = -0.75;
-        motorGroup.add(endCap2);
-        
-        motorGroup.position.set(1.3, 0.5, 0);
-        scene.add(motorGroup);
-        
-        // Wire Path (curved path from motor)
-        const wireCurve = new THREE.CatmullRomCurve3([
-            new THREE.Vector3(1.3, 0.5, 0.6),
-            new THREE.Vector3(1.5, 1, 1.5),
-            new THREE.Vector3(2, 2, 2.5),
-            new THREE.Vector3(2.5, 2.5, 3.5),
-            new THREE.Vector3(3, 2.5, 4)
-        ]);
-        
-        const wireTubeGeometry = new THREE.TubeGeometry(wireCurve, 64, 0.05, 8, false);
-        const wire = new THREE.Mesh(wireTubeGeometry, wireMaterial);
-        wire.castShadow = true;
-        scene.add(wire);
+        function drawSphere(sphere) {
+            if (!sphere.visible) return;
+            
+            const projected = project(sphere.pos);
+            if (!projected) return;
+            
+            const screenRadius = (sphere.radius * canvas.height) / (projected.z * 2);
+            
+            const brightness = Math.max(0.5, Math.min(1, 1 - projected.z / 30));
+            const r = parseInt(sphere.color.slice(1, 3), 16) * brightness;
+            const g = parseInt(sphere.color.slice(3, 5), 16) * brightness;
+            const b = parseInt(sphere.color.slice(5, 7), 16) * brightness;
+            
+            const gradient = ctx.createRadialGradient(
+                projected.x, projected.y, 0,
+                projected.x, projected.y, screenRadius
+            );
+            gradient.addColorStop(0, `rgb(${r * 1.5}, ${g * 1.5}, ${b * 1.5})`);
+            gradient.addColorStop(1, `rgb(${r}, ${g}, ${b})`);
+            
+            ctx.beginPath();
+            ctx.arc(projected.x, projected.y, screenRadius, 0, Math.PI * 2);
+            ctx.fillStyle = gradient;
+            ctx.fill();
+            
+            return projected.z;
+        }
         
         // ============================================
-        // ELECTRONS (Yellow Spheres)
+        // SCENE OBJECTS
         // ============================================
         
+        const objects = [];
+        
+        // Base platform
+        const base = createBox(6, 0.3, 6, '#2c3e50');
+        base.pos = new Vec3(0, -2, 0);
+        objects.push(base);
+        
+        // Pedal
+        const pedal = createBox(2.5, 0.4, 2.5, '#34495e');
+        pedal.pos = new Vec3(0, 2, 0);
+        objects.push(pedal);
+        
+        // Rack body
+        const rackBody = createBox(0.4, 3, 0.8, '#7f8c8d');
+        rackBody.pos = new Vec3(-2, 0.5, 0);
+        objects.push(rackBody);
+        
+        // Rack teeth
+        const rackTeeth = [];
+        for (let i = 0; i < 12; i++) {
+            const tooth = createBox(0.2, 0.15, 0.8, '#7f8c8d');
+            tooth.pos = new Vec3(-1.7, -1 + (i * 0.25), 0);
+            objects.push(tooth);
+            rackTeeth.push(tooth);
+        }
+        
+        // Pinion gear
+        const pinion = createCylinder(0.8, 0.6, '#e74c3c');
+        pinion.pos = new Vec3(-0.7, 0.5, 0);
+        pinion.rot = new Vec3(0, 0, Math.PI / 2);
+        objects.push(pinion);
+        
+        // Pinion teeth
+        const pinionTeeth = [];
+        for (let i = 0; i < 16; i++) {
+            const tooth = createBox(0.15, 0.6, 0.2, '#e74c3c');
+            pinionTeeth.push(tooth);
+            objects.push(tooth);
+        }
+        
+        // Shaft
+        const shaft = createCylinder(0.15, 2, '#7f8c8d');
+        shaft.pos = new Vec3(0.3, 0.5, 0);
+        shaft.rot = new Vec3(0, 0, Math.PI / 2);
+        objects.push(shaft);
+        
+        // Motor
+        const motor = createCylinder(0.6, 1.5, '#2c3e50');
+        motor.pos = new Vec3(1.3, 0.5, 0);
+        motor.rot = new Vec3(0, 0, Math.PI / 2);
+        objects.push(motor);
+        
+        // Motor caps
+        const motorCap1 = createCylinder(0.65, 0.1, '#95a5a6');
+        motorCap1.pos = new Vec3(2.05, 0.5, 0);
+        motorCap1.rot = new Vec3(0, 0, Math.PI / 2);
+        objects.push(motorCap1);
+        
+        const motorCap2 = createCylinder(0.65, 0.1, '#95a5a6');
+        motorCap2.pos = new Vec3(0.55, 0.5, 0);
+        motorCap2.rot = new Vec3(0, 0, Math.PI / 2);
+        objects.push(motorCap2);
+        
+        // Electrons
         const electrons = [];
-        const maxElectrons = 20;
-        
-        function createElectron() {
-            const electronGeometry = new THREE.SphereGeometry(0.1, 16, 16);
-            const electron = new THREE.Mesh(electronGeometry, electronMaterial.clone());
-            electron.castShadow = true;
-            electron.userData.progress = 0;
-            electron.userData.active = false;
-            scene.add(electron);
-            return electron;
+        for (let i = 0; i < 20; i++) {
+            const electron = createSphere(0.1, '#ffff00');
+            electron.visible = false;
+            electron.progress = 0;
+            electron.active = false;
+            objects.push(electron);
+            electrons.push(electron);
         }
         
-        for (let i = 0; i < maxElectrons; i++) {
-            electrons.push(createElectron());
+        // ============================================
+        // WIRE CURVE
+        // ============================================
+        
+        function bezierPoint(t, p0, p1, p2, p3) {
+            const u = 1 - t;
+            const tt = t * t;
+            const uu = u * u;
+            const uuu = uu * u;
+            const ttt = tt * t;
+            
+            return p0.mul(uuu)
+                .add(p1.mul(3 * uu * t))
+                .add(p2.mul(3 * u * tt))
+                .add(p3.mul(ttt));
+        }
+        
+        const wirePoints = [
+            new Vec3(1.3, 0.5, 0.6),
+            new Vec3(1.5, 1, 1.5),
+            new Vec3(2, 2, 2.5),
+            new Vec3(3, 2.5, 4)
+        ];
+        
+        function getWirePoint(t) {
+            return bezierPoint(t, wirePoints[0], wirePoints[1], wirePoints[2], wirePoints[3]);
         }
         
         // ============================================
@@ -566,9 +610,9 @@
         
         const state = {
             pedalPressed: false,
-            pedalPosition: 2,
-            targetPedalPosition: 2,
-            rackPosition: 0.5,
+            pedalY: 2,
+            targetPedalY: 2,
+            rackY: 0.5,
             pinionRotation: 0,
             motorRotation: 0,
             motorSpeed: 0,
@@ -578,7 +622,7 @@
         };
         
         // ============================================
-        // PHYSICS CALCULATIONS
+        // PHYSICS
         // ============================================
         
         const pinionRadius = 0.8;
@@ -586,87 +630,121 @@
         
         function updatePhysics() {
             const lerpFactor = 0.1 * state.compressionSpeed;
-            state.pedalPosition += (state.targetPedalPosition - state.pedalPosition) * lerpFactor;
-            pedal.position.y = state.pedalPosition;
+            state.pedalY += (state.targetPedalY - state.pedalY) * lerpFactor;
+            pedal.pos.y = state.pedalY;
             
-            const rackDisplacement = 2 - state.pedalPosition;
-            state.rackPosition = 0.5 - rackDisplacement;
-            rackGroup.position.y = state.rackPosition;
+            const rackDisplacement = 2 - state.pedalY;
+            state.rackY = 0.5 - rackDisplacement;
+            rackBody.pos.y = state.rackY;
+            
+            rackTeeth.forEach((tooth, i) => {
+                tooth.pos.y = state.rackY - 1.5 + (i * 0.25);
+            });
             
             const linearDistance = rackDisplacement;
-            const pinionRotationDelta = linearDistance / pinionRadius;
-            state.pinionRotation = pinionRotationDelta;
-            pinionGroup.rotation.y = state.pinionRotation;
+            state.pinionRotation = linearDistance / pinionRadius;
+            pinion.rot.y = state.pinionRotation;
+            
+            // Update pinion teeth positions
+            pinionTeeth.forEach((tooth, i) => {
+                const angle = (i / 16) * Math.PI * 2 + state.pinionRotation;
+                const offsetX = Math.cos(angle) * 0.9;
+                const offsetZ = Math.sin(angle) * 0.9;
+                tooth.pos = new Vec3(-0.7 + offsetX, 0.5, offsetZ);
+                tooth.rot = new Vec3(0, angle, Math.PI / 2);
+            });
             
             state.motorRotation = state.pinionRotation * gearRatio;
-            motorGroup.rotation.x = state.motorRotation;
+            motor.rot.x = state.motorRotation;
             
             const rotationsPerFrame = Math.abs(state.motorSpeed);
-            state.motorRPM = Math.round(rotationsPerFrame * 60 * 60);
-            const currentOutput = Math.round(Math.abs(state.motorSpeed) * 100);
+            const rpm = Math.round(rotationsPerFrame * 60 * 60);
+            const current = Math.round(Math.abs(state.motorSpeed) * 100);
             
-            document.getElementById('motor-rpm').textContent = state.motorRPM;
-            document.getElementById('current').textContent = currentOutput + ' mA';
+            document.getElementById('motor-rpm').textContent = rpm;
+            document.getElementById('current').textContent = current + ' mA';
         }
         
-        // ============================================
-        // ELECTRON FLOW ANIMATION
-        // ============================================
-        
         function updateElectrons(deltaTime) {
-            if (state.motorSpeed > 0.001 && state.activeElectrons < maxElectrons) {
-                const electronSpawnRate = state.motorSpeed * 10;
-                if (Math.random() < electronSpawnRate * deltaTime) {
-                    spawnElectron();
+            if (state.motorSpeed > 0.001 && state.activeElectrons < 20) {
+                const spawnRate = state.motorSpeed * 10;
+                if (Math.random() < spawnRate * deltaTime) {
+                    const electron = electrons.find(e => !e.active);
+                    if (electron) {
+                        electron.active = true;
+                        electron.progress = 0;
+                        electron.visible = true;
+                        state.activeElectrons++;
+                        state.electronCount++;
+                        document.getElementById('electron-count').textContent = state.electronCount;
+                    }
                 }
             }
             
-            electrons.forEach(electron => {
-                if (!electron.userData.active) return;
+            electrons.forEach(e => {
+                if (!e.active) return;
                 
-                electron.userData.progress += state.motorSpeed * 0.5 * deltaTime * 60;
+                e.progress += state.motorSpeed * 0.5 * deltaTime * 60;
                 
-                if (electron.userData.progress >= 1) {
-                    electron.userData.active = false;
-                    electron.visible = false;
+                if (e.progress >= 1) {
+                    e.active = false;
+                    e.visible = false;
                     state.activeElectrons--;
                 } else {
-                    const point = wireCurve.getPoint(electron.userData.progress);
-                    electron.position.copy(point);
-                    
-                    const pulse = 1 + Math.sin(Date.now() * 0.01 + electron.userData.progress * 10) * 0.3;
-                    electron.scale.setScalar(pulse);
-                    
-                    const intensity = 0.3 + state.motorSpeed * 10;
-                    electron.material.emissiveIntensity = Math.min(intensity, 1);
+                    e.pos = getWirePoint(e.progress);
                 }
             });
         }
         
-        function spawnElectron() {
-            const electron = electrons.find(e => !e.userData.active);
-            if (!electron) return;
+        // ============================================
+        // MOUSE CONTROLS
+        // ============================================
+        
+        let isDragging = false;
+        let lastMouseX = 0;
+        let lastMouseY = 0;
+        
+        canvas.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            lastMouseX = e.clientX;
+            lastMouseY = e.clientY;
+        });
+        
+        canvas.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
             
-            electron.userData.active = true;
-            electron.userData.progress = 0;
-            electron.visible = true;
-            state.activeElectrons++;
-            state.electronCount++;
+            const deltaX = e.clientX - lastMouseX;
+            const deltaY = e.clientY - lastMouseY;
             
-            document.getElementById('electron-count').textContent = state.electronCount;
-        }
+            camera.theta -= deltaX * 0.01;
+            camera.phi = Math.max(0.1, Math.min(Math.PI - 0.1, camera.phi - deltaY * 0.01));
+            camera.update();
+            
+            lastMouseX = e.clientX;
+            lastMouseY = e.clientY;
+        });
+        
+        canvas.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+        
+        canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            camera.radius = Math.max(5, Math.min(30, camera.radius + e.deltaY * 0.01));
+            camera.update();
+        });
         
         // ============================================
-        // CONTROLS
+        // BUTTON CONTROLS
         // ============================================
         
         document.getElementById('press-pedal').addEventListener('click', () => {
             if (state.pedalPressed) {
-                state.targetPedalPosition = 2;
+                state.targetPedalY = 2;
                 state.pedalPressed = false;
                 document.getElementById('press-pedal').textContent = 'Press Foot Pedal';
             } else {
-                state.targetPedalPosition = 0.2;
+                state.targetPedalY = 0.2;
                 state.pedalPressed = true;
                 document.getElementById('press-pedal').textContent = 'Release Pedal';
             }
@@ -674,18 +752,19 @@
         
         document.getElementById('reset').addEventListener('click', () => {
             state.pedalPressed = false;
-            state.targetPedalPosition = 2;
-            state.pedalPosition = 2;
-            state.rackPosition = 0.5;
+            state.targetPedalY = 2;
+            state.pedalY = 2;
+            state.rackY = 0.5;
             state.pinionRotation = 0;
             state.motorRotation = 0;
             state.motorSpeed = 0;
             state.electronCount = 0;
             state.activeElectrons = 0;
             
-            electrons.forEach(electron => {
-                electron.userData.active = false;
-                electron.visible = false;
+            electrons.forEach(e => {
+                e.active = false;
+                e.visible = false;
+                e.progress = 0;
             });
             
             document.getElementById('electron-count').textContent = '0';
@@ -700,48 +779,61 @@
         });
         
         // ============================================
-        // ANIMATION LOOP
+        // RENDER LOOP
         // ============================================
         
         let lastTime = Date.now();
         
-        function animate() {
-            requestAnimationFrame(animate);
-            
+        function render() {
             const currentTime = Date.now();
             const deltaTime = (currentTime - lastTime) / 1000;
             lastTime = currentTime;
             
-            const oldMotorRotation = motorGroup.rotation.x;
+            const oldMotorRot = motor.rot.x;
             updatePhysics();
-            const newMotorRotation = motorGroup.rotation.x;
-            state.motorSpeed = Math.abs(newMotorRotation - oldMotorRotation);
+            state.motorSpeed = Math.abs(motor.rot.x - oldMotorRot);
             
             if (!state.pedalPressed && state.motorSpeed > 0.001) {
                 state.motorSpeed *= 0.95;
-            } else if (!state.pedalPressed && state.motorSpeed <= 0.001) {
+            } else if (!state.pedalPressed) {
                 state.motorSpeed = 0;
             }
             
             updateElectrons(deltaTime);
-            controls.update();
-            renderer.render(scene, camera);
+            
+            // Clear canvas
+            ctx.fillStyle = '#1a1a2e';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Sort objects by depth (painter's algorithm)
+            const renderList = objects
+                .map(obj => ({ obj, depth: obj.pos.sub(camera.pos).length() }))
+                .sort((a, b) => b.depth - a.depth);
+            
+            // Render all objects
+            renderList.forEach(({ obj }) => {
+                if (obj.type === 'box') drawBox(obj);
+                else if (obj.type === 'cylinder') drawCylinder(obj);
+                else if (obj.type === 'sphere') drawSphere(obj);
+            });
+            
+            requestAnimationFrame(render);
         }
         
         // ============================================
-        // WINDOW RESIZE HANDLER
+        // WINDOW RESIZE
         // ============================================
         
         window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
         });
         
-        animate();
+        // Initialize
+        camera.update();
+        render();
         
-        console.log('🔌 Shoe Generator Simulation Loaded');
-        console.log('📐 Physics: θ = d / r, Gear Ratio: ' + gearRatio + ':1');
+        console.log('🔌 Shoe Generator - Zero Dependency Version Loaded!');
     </script>
 </body>
 </html>
