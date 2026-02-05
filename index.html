@@ -9,7 +9,7 @@
             margin: 0;
             overflow: hidden;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #1a1a1a;
+            background-color: #1a1a1a; /* Dark background matches 3D scene */
             color: #ffffff;
         }
 
@@ -17,6 +17,7 @@
             width: 100vw;
             height: 100vh;
             display: block;
+            outline: none;
         }
 
         /* UI Overlay */
@@ -24,38 +25,35 @@
             position: absolute;
             top: 20px;
             left: 20px;
-            background: rgba(0, 0, 0, 0.8);
+            background: rgba(0, 0, 0, 0.85);
             padding: 20px;
             border-radius: 8px;
             border-left: 4px solid #00d2ff;
-            width: 300px;
+            width: 280px;
             pointer-events: auto;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+            backdrop-filter: blur(4px);
+            z-index: 10;
         }
 
         h1 {
             font-size: 18px;
-            margin: 0 0 10px 0;
+            margin: 0 0 15px 0;
             text-transform: uppercase;
             letter-spacing: 1px;
             color: #00d2ff;
+            border-bottom: 1px solid #333;
+            padding-bottom: 10px;
         }
 
         .control-group {
             margin-bottom: 15px;
         }
 
-        label {
-            display: block;
-            font-size: 12px;
-            color: #aaa;
-            margin-bottom: 5px;
-        }
-
         /* Buttons */
         button {
             width: 100%;
-            padding: 10px;
+            padding: 12px;
             margin-bottom: 8px;
             border: none;
             border-radius: 4px;
@@ -63,15 +61,16 @@
             font-weight: bold;
             transition: all 0.2s;
             text-transform: uppercase;
-            font-size: 12px;
+            font-size: 11px;
+            letter-spacing: 0.5px;
         }
 
         .btn-action {
-            background-color: #00d2ff;
+            background: linear-gradient(135deg, #00d2ff, #009dc0);
             color: #000;
         }
-        .btn-action:hover { background-color: #66e0ff; }
-        .btn-action:active { transform: translateY(2px); }
+        .btn-action:hover { filter: brightness(1.1); }
+        .btn-action:active { transform: scale(0.98); }
 
         .btn-reset {
             background-color: #ff4757;
@@ -96,17 +95,21 @@
         .stat-row {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 4px;
+            margin-bottom: 6px;
         }
-        .value { color: #00d2ff; font-family: monospace; }
+        .value { color: #00d2ff; font-family: 'Courier New', monospace; font-weight: bold; }
         
         #instructions {
             position: absolute;
             bottom: 20px;
             left: 20px;
             color: #888;
-            font-size: 11px;
+            font-size: 12px;
             pointer-events: none;
+            z-index: 9;
+            background: rgba(0,0,0,0.5);
+            padding: 8px 12px;
+            border-radius: 20px;
         }
     </style>
 </head>
@@ -127,12 +130,12 @@
         <div class="stats">
             <div class="stat-row"><span>Rack Position:</span> <span id="val-rack" class="value">0%</span></div>
             <div class="stat-row"><span>Motor RPM:</span> <span id="val-rpm" class="value">0</span></div>
-            <div class="stat-row"><span>Output:</span> <span id="val-watts" class="value">0 W</span></div>
+            <div class="stat-row"><span>Output:</span> <span id="val-watts" class="value">0.0 W</span></div>
         </div>
     </div>
 
     <div id="instructions">
-        Left Click: Rotate • Right Click: Pan • Scroll: Zoom
+        🖱️ Left Drag: Rotate • Right Drag: Pan • Scroll: Zoom
     </div>
 
     <div id="canvas-container"></div>
@@ -150,85 +153,365 @@
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-        // --- Configuration & Physics Constants ---
+        // --- Configuration ---
         const CONFIG = {
             gearColor: 0xaaaaaa,
             rackColor: 0x888888,
             teethColor: 0xcccccc,
-            wireColor: 0x00d2ff, // Cyan electricity
+            wireColor: 0x00d2ff,
             motorColor: 0x333333,
-            module: 0.2, // Scaling factor for gear teeth size
+            module: 0.2, // Gear tooth sizing
             rackHeight: 8,
-            rackTravel: 5, // How far the rack can move down
-            animationSpeed: 1.0
+            rackTravel: 5,
+            bgColor: 0x111111
         };
 
-        // --- State ---
         const state = {
             rackY: 0,
             rackVelocity: 0,
-            isDragging: false,
             wireframe: false
         };
 
-        // --- Scene Setup ---
+        // --- Init Scene ---
         const container = document.getElementById('canvas-container');
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x111111);
-        scene.fog = new THREE.Fog(0x111111, 10, 50);
+        scene.background = new THREE.Color(CONFIG.bgColor);
+        scene.fog = new THREE.Fog(CONFIG.bgColor, 10, 40);
 
         const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
-        camera.position.set(10, 8, 10);
+        // Position camera to see the whole train clearly
+        camera.position.set(4, 6, 12);
 
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
         renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         container.appendChild(renderer.domElement);
-
-        // --- Lighting ---
-        const ambientLight = new THREE.AmbientLight(0x404040, 2); // Soft white light
-        scene.add(ambientLight);
-
-        const dirLight = new THREE.DirectionalLight(0xffffff, 2);
-        dirLight.position.set(5, 10, 7);
-        dirLight.castShadow = true;
-        scene.add(dirLight);
-        
-        const blueLight = new THREE.PointLight(0x00d2ff, 1, 10);
-        blueLight.position.set(2, 2, 0);
-        scene.add(blueLight);
 
         // --- Controls ---
         const controls = new OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
         controls.dampingFactor = 0.05;
+        // Focus point on the middle of the gear train
+        controls.target.set(2, 0, 0);
 
-        // --- Helper: Procedural Gear Generator ---
-        // Generates a group containing a cylinder and teeth
-        function createGear(toothCount, color = CONFIG.gearColor, width = 0.5) {
+        // --- Lighting ---
+        const ambientLight = new THREE.AmbientLight(0x404040, 2.5); 
+        scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 2);
+        dirLight.position.set(5, 10, 7);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 1024;
+        dirLight.shadow.mapSize.height = 1024;
+        scene.add(dirLight);
+
+        // --- Geometries ---
+
+        // Helper: Create Gear Group
+        function createGear(toothCount, color) {
             const group = new THREE.Group();
+            const width = 0.5;
             
-            // Calculate Pitch Radius based on module
-            // Module = Diameter / Teeth => Diameter = Module * Teeth
-            // Radius = (Module * Teeth) / 2
+            // Pitch Diameter = Module * Teeth
+            // Pitch Radius = (Module * Teeth) / 2
             const pitchRadius = (CONFIG.module * toothCount) / 2;
-            const rootRadius = pitchRadius - (1.25 * CONFIG.module * 0.5); // Slightly smaller for the cylinder
-            const outerRadius = pitchRadius + (CONFIG.module * 0.5);
+            const rootRadius = pitchRadius - (1.1 * CONFIG.module); 
 
-            // Main Gear Body
+            // Gear Cylinder
             const geometry = new THREE.CylinderGeometry(rootRadius, rootRadius, width, 32);
             const material = new THREE.MeshStandardMaterial({ 
                 color: color, 
-                metalness: 0.7, 
-                roughness: 0.3 
+                metalness: 0.6, 
+                roughness: 0.25 
             });
             const body = new THREE.Mesh(geometry, material);
-            body.rotation.x = Math.PI / 2; // Lay flat relative to Z axis initially
+            body.rotation.x = Math.PI / 2;
             body.castShadow = true;
             body.receiveShadow = true;
             group.add(body);
 
             // Teeth
-            const toothGeo = new THREE.BoxGeometry(CONFIG.module * 0.8, width, CONFIG.module * 0.8);
-            const toothMat
+            const toothGeo = new THREE.BoxGeometry(CONFIG.module * 0.7, width, CONFIG.module * 0.75);
+            const toothMat = new THREE.MeshStandardMaterial({ color: CONFIG.teethColor, metalness: 0.5, roughness: 0.2 });
+            
+            for (let i = 0; i < toothCount; i++) {
+                const angle = (i / toothCount) * Math.PI * 2;
+                
+                // We create a pivot object to simplify rotation logic
+                const tooth = new THREE.Mesh(toothGeo, toothMat);
+                
+                // Position on rim
+                const tx = Math.cos(angle) * pitchRadius;
+                const ty = Math.sin(angle) * pitchRadius;
+                
+                tooth.position.set(tx, ty, 0);
+                tooth.rotation.z = angle;
+                
+                group.add(tooth);
+            }
+
+            // Axle Cap
+            const cap = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.15, 0.15, width + 0.1, 16),
+                new THREE.MeshStandardMaterial({ color: 0x222222 })
+            );
+            cap.rotation.x = Math.PI / 2;
+            group.add(cap);
+
+            // Store physics data
+            group.userData = { pitchRadius, toothCount };
+            return group;
+        }
+
+        // Helper: Electron Texture
+        function createElectronTexture() {
+            const cvs = document.createElement('canvas');
+            cvs.width = 64; 
+            cvs.height = 64;
+            const ctx = cvs.getContext('2d');
+            
+            // Fill black (transparent for additive)
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0,0,64,64);
+            
+            // Draw Bolt
+            ctx.fillStyle = '#00d2ff';
+            ctx.beginPath();
+            ctx.moveTo(10, 32); ctx.lineTo(40, 32); ctx.lineTo(35, 20);
+            ctx.moveTo(40, 32); ctx.lineTo(35, 44);
+            ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3; ctx.stroke();
+            
+            // Glow
+            const g = ctx.createRadialGradient(32,32,2,32,32,25);
+            g.addColorStop(0, 'rgba(0, 210, 255, 1)');
+            g.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = g;
+            ctx.fillRect(0,0,64,64);
+
+            const tex = new THREE.CanvasTexture(cvs);
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.wrapT = THREE.RepeatWrapping;
+            return tex;
+        }
+
+        // --- Build Assembly ---
+
+        const system = new THREE.Group();
+        scene.add(system);
+
+        // 1. Rack
+        const rackGroup = new THREE.Group();
+        const rackW = 0.8; 
+        const rackD = 0.5;
+        
+        const rackBody = new THREE.Mesh(
+            new THREE.BoxGeometry(rackW, CONFIG.rackHeight, rackD),
+            new THREE.MeshStandardMaterial({ color: CONFIG.rackColor })
+        );
+        rackGroup.add(rackBody);
+        
+        // Rack Teeth
+        const rTeethCount = Math.floor(CONFIG.rackHeight / (CONFIG.module * 1.5));
+        for(let i=0; i<rTeethCount; i++) {
+            const y = (i * CONFIG.module * 1.6) - (CONFIG.rackHeight/2) + 0.5;
+            const t = new THREE.Mesh(
+                new THREE.BoxGeometry(0.5, CONFIG.module*0.6, rackD*1.1),
+                new THREE.MeshStandardMaterial({ color: CONFIG.teethColor })
+            );
+            t.position.set(rackW/2, y, 0); // Stick out to right
+            rackGroup.add(t);
+        }
+        
+        const initialRackY = 2;
+        rackGroup.position.set(-3.5, initialRackY, 0);
+        system.add(rackGroup);
+
+        // 2. Pinion (Gear 1)
+        const N1 = 18;
+        const gear1 = createGear(N1, 0x666666);
+        const R1 = gear1.userData.pitchRadius;
+        // Position: Rack X + Rack HalfWidth + Pinion Radius
+        gear1.position.set(rackGroup.position.x + (rackW/2) + R1 + 0.05, 0, 0);
+        system.add(gear1);
+
+        // 3. Intermediate (Gear 2) - Reduction
+        const N2 = 36;
+        const gear2 = createGear(N2, 0x777777);
+        const R2 = gear2.userData.pitchRadius;
+        gear2.position.set(gear1.position.x + R1 + R2 + 0.05, 0, 0);
+        system.add(gear2);
+
+        // 4. Drive (Gear 3) - Speed Up
+        const N3 = 12;
+        const gear3 = createGear(N3, 0x888888);
+        const R3 = gear3.userData.pitchRadius;
+        gear3.position.set(gear2.position.x + R2 + R3 + 0.05, 0, 0);
+        system.add(gear3);
+
+        // 5. Motor
+        const motorGroup = new THREE.Group();
+        const mBody = new THREE.Mesh(
+            new THREE.BoxGeometry(2, 2, 3),
+            new THREE.MeshStandardMaterial({ color: CONFIG.motorColor })
+        );
+        // Corrected shaft material syntax
+        const mShaft = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.2, 0.2, 3.5, 16),
+            new THREE.MeshStandardMaterial({ color: 0xcccccc }) 
+        );
+        mShaft.rotation.x = Math.PI / 2;
+        
+        motorGroup.add(mBody);
+        motorGroup.add(mShaft);
+        motorGroup.position.set(gear3.position.x, 0, -2);
+        system.add(motorGroup);
+
+        // Axle connector
+        const axle = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.1, 0.1, 2, 8),
+            new THREE.MeshStandardMaterial({ color: 0x333333 })
+        );
+        axle.rotation.x = Math.PI / 2;
+        axle.position.set(gear3.position.x, 0, -1);
+        system.add(axle);
+
+        // 6. Wire Visualization
+        const curve = new THREE.CatmullRomCurve3([
+            new THREE.Vector3(gear3.position.x + 1, 0, -2),
+            new THREE.Vector3(gear3.position.x + 2, 1, -2),
+            new THREE.Vector3(gear3.position.x + 4, 0, 0),
+            new THREE.Vector3(gear3.position.x + 5, -2, 2)
+        ]);
+        
+        const eTex = createElectronTexture();
+        const wireMat = new THREE.MeshPhongMaterial({
+            color: 0x111111,
+            emissive: 0x00d2ff,
+            emissiveMap: eTex,
+            emissiveIntensity: 0,
+            transparent: true,
+            opacity: 0.9
+        });
+        const wire = new THREE.Mesh(new THREE.TubeGeometry(curve, 64, 0.1, 8, false), wireMat);
+        system.add(wire);
+
+        // --- Physics Logic ---
+
+        // Gear Ratios
+        const ratio_1_2 = N1 / N2; // e.g. 0.5
+        const ratio_2_3 = N2 / N3; // e.g. 3.0
+        const totalRatio = ratio_1_2 * ratio_2_3;
+
+        // UI Refs
+        const uiRack = document.getElementById('val-rack');
+        const uiRpm = document.getElementById('val-rpm');
+        const uiWatts = document.getElementById('val-watts');
+
+        // --- Loop ---
+        const clock = new THREE.Clock();
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            const dt = clock.getDelta();
+
+            // Physics: Move Rack
+            if(state.rackVelocity !== 0) {
+                rackGroup.position.y -= state.rackVelocity * dt;
+                
+                // Bottom limit
+                if(rackGroup.position.y < initialRackY - CONFIG.rackTravel) {
+                    rackGroup.position.y = initialRackY - CONFIG.rackTravel;
+                    state.rackVelocity = 0; // Stop
+                }
+                
+                // Friction
+                if(state.rackVelocity > 0) state.rackVelocity *= 0.96;
+                if(state.rackVelocity < 0.05) state.rackVelocity = 0;
+            }
+
+            // Kinematics: Calculate Rotations from Rack Position
+            const displacement = initialRackY - rackGroup.position.y;
+            
+            // Pinion Angle (theta = arc / radius)
+            // Rack moves down (Y-), Pinion on Right rotates CW (Z-)
+            // But mathematically: angle = disp / R
+            const theta1 = displacement / R1;
+            
+            // Gear 2 Angle (Meshed -> Reversed)
+            const theta2 = -theta1 * ratio_1_2;
+            
+            // Gear 3 Angle (Meshed -> Reversed again)
+            const theta3 = -theta2 * ratio_2_3;
+
+            // Apply to Meshes
+            gear1.rotation.z = -theta1; 
+            gear2.rotation.z = -theta2; 
+            gear3.rotation.z = -theta3; 
+            
+            mShaft.rotation.z = -theta3;
+            axle.rotation.z = -theta3;
+
+            // Electronics Vis
+            const speed = state.rackVelocity * totalRatio;
+            if(speed > 0.01) {
+                eTex.offset.x -= speed * dt * 3; // Flow
+                wire.material.emissiveIntensity = Math.min(speed * 0.5, 2);
+            } else {
+                wire.material.emissiveIntensity *= 0.9; // Fade
+            }
+
+            // UI Update
+            const pct = (displacement / CONFIG.rackTravel) * 100;
+            uiRack.textContent = Math.min(Math.max(pct, 0), 100).toFixed(0) + '%';
+            
+            const rpm = Math.floor(speed * 60);
+            uiRpm.textContent = rpm;
+            uiWatts.textContent = (rpm * 0.12).toFixed(1) + ' W';
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        animate();
+        console.log("System Initialized");
+
+        // --- Interaction ---
+        
+        document.getElementById('btn-push').addEventListener('click', () => {
+            // Only allow push if not fully depressed
+            if(rackGroup.position.y > (initialRackY - CONFIG.rackTravel) + 0.1) {
+                state.rackVelocity = 5.0; // Impulse
+            }
+        });
+
+        document.getElementById('btn-reset').addEventListener('click', () => {
+            state.rackVelocity = 0;
+            // Simple return animation
+            const restore = setInterval(() => {
+                rackGroup.position.y += 0.2;
+                if(rackGroup.position.y >= initialRackY) {
+                    rackGroup.position.y = initialRackY;
+                    clearInterval(restore);
+                }
+            }, 16);
+        });
+
+        document.getElementById('btn-wireframe').addEventListener('click', () => {
+            state.wireframe = !state.wireframe;
+            scene.traverse(obj => {
+                if(obj.isMesh && obj !== wire) {
+                    obj.material.wireframe = state.wireframe;
+                }
+            });
+        });
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
