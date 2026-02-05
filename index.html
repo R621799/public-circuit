@@ -1,398 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shoe Generator - 3D Engineering Simulation</title>
-    <title>Shoe Generator - Final Engineering Build</title>
-<style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
-        
-body {
-font-family: 'Segoe UI', sans-serif;
-background: #1a1a2e;
-overflow: hidden;
-            touch-action: none; /* Prevents mobile scrolling while dragging 3D */
-}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shoe Generator - Precise Gear Mechanics</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #1a1a2e; font-family: 'Segoe UI', sans-serif; }
         #canvas-container { width: 100vw; height: 100vh; display: block; }
-
-        #canvas-container {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            z-index: 1; /* Behind the UI */
-        }
-
-#controls {
+        
+        /* UI Overlay */
+        #ui-layer {
             position: absolute; top: 20px; left: 20px;
             background: rgba(255, 255, 255, 0.95);
             padding: 20px; border-radius: 12px;
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            background: rgba(255, 255, 255, 0.9);
-            padding: 20px;
-            border-radius: 12px;
-box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-            min-width: 280px; z-index: 100;
-            min-width: 280px;
-            z-index: 10; /* Above the canvas */
-            pointer-events: auto; /* Ensures buttons are clickable */
-}
-
-h1 { font-size: 18px; margin-bottom: 15px; color: #1e3c72; border-bottom: 2px solid #2a5298; padding-bottom: 8px; }
-.control-group { margin-bottom: 15px; }
-label { display: block; margin-bottom: 5px; font-size: 13px; font-weight: 600; color: #333; }
-        
-button {
-width: 100%; padding: 12px; margin: 5px 0; border: none;
-border-radius: 6px; font-size: 14px; font-weight: 600;
-            cursor: pointer; transition: all 0.3s ease; text-transform: uppercase;
-            cursor: pointer; transition: all 0.2s; text-transform: uppercase;
-}
-        #press-pedal { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
-        
-        #press-pedal { background: #667eea; color: white; }
-        #press-pedal:hover { background: #764ba2; }
-#reset { background: #f39c12; color: white; }
-        input[type="range"] { width: 100%; margin: 8px 0; }
-        .info-display { background: #ecf0f1; padding: 10px; border-radius: 6px; margin-top: 10px; font-size: 12px; }
-        
-        .info-display { background: #f0f0f0; padding: 10px; border-radius: 6px; margin-top: 10px; font-size: 12px; }
-.info-item { display: flex; justify-content: space-between; margin: 5px 0; }
-.info-value { color: #2a5298; font-weight: 700; }
-        #info {
-            position: absolute; bottom: 20px; left: 20px;
-            background: rgba(255, 255, 255, 0.95);
-            padding: 15px; border-radius: 12px;
-            max-width: 280px; font-size: 12px; z-index: 100;
-
-        #info-box {
-            position: absolute; bottom: 20px; right: 20px;
-            background: rgba(255, 255, 255, 0.8);
-            padding: 10px; border-radius: 8px; font-size: 11px; z-index: 10;
-}
-</style>
+            width: 300px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        h1 { margin: 0 0 15px 0; font-size: 1.2rem; color: #333; border-bottom: 2px solid #444; padding-bottom: 10px; }
+        button {
+            width: 100%; padding: 15px; border: none; background: #2980b9; color: white;
+            font-size: 1rem; font-weight: bold; border-radius: 6px; cursor: pointer;
+            transition: background 0.2s;
+        }
+        button:active { background: #1f6391; transform: scale(0.98); }
+        .stats { margin-top: 15px; font-size: 0.9rem; color: #555; }
+        .stat-row { display: flex; justify-content: space-between; margin: 5px 0; }
+        .val { font-weight: bold; color: #2980b9; }
+    </style>
 </head>
 <body>
+    <div id="ui-layer">
+        <h1>⚙️ Rack & Pinion Gen</h1>
+        <button id="pedal-btn">PRESS PEDAL</button>
+        <div class="stats">
+            <div class="stat-row"><span>Motor Speed:</span> <span class="val" id="rpm">0 RPM</span></div>
+            <div class="stat-row"><span>Energy Gen:</span> <span class="val" id="energy">0 W</span></div>
+        </div>
+    </div>
+    <div id="canvas-container"></div>
 
-<div id="canvas-container"></div>
-    
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
 
-<div id="controls">
-        <h1>⚡ Shoe Generator Control</h1>
-        <h1>⚡ Shoe Generator</h1>
-<div class="control-group">
-<button id="press-pedal">Press Foot Pedal</button>
-            <button id="reset">Reset Simulation</button>
-            <button id="reset">Reset</button>
-</div>
-<div class="control-group">
-            <label for="speed">Compression Speed:</label>
-            <input type="range" id="speed" min="1" max="10" value="5" step="1">
-            <span id="speed-value">5</span>
-            <label>Compression Speed: <span id="speed-value">5</span></label>
-            <input type="range" id="speed" min="1" max="10" value="5">
-</div>
-<div class="info-display">
-            <div class="info-item"><span>Electrons Generated:</span><span class="info-value" id="electron-count">0</span></div>
-            <div class="info-item"><span>Electrons:</span><span class="info-value" id="electron-count">0</span></div>
-<div class="info-item"><span>Motor RPM:</span><span class="info-value" id="motor-rpm">0</span></div>
-            <div class="info-item"><span>Current Output:</span><span class="info-value" id="current">0 mA</span></div>
-</div>
-</div>
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-    <div id="info">
-        <h3>User Interaction:</h3>
-        <p>• <strong>Left Click + Drag:</strong> Rotate Model</p>
-        <p>• <strong>Right Click + Drag:</strong> Pan View</p>
-        <p>• <strong>Scroll:</strong> Zoom In/Out</p>
-    <div id="info-box">
-        <strong>3D Controls:</strong><br>
-        Left Click: Rotate | Right Click: Pan | Scroll: Zoom
-</div>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-
-<script>
-        // --- SCENE SETUP ---
-        // --- SCENE & RENDERER ---
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x1a1a2e);
+        // --- 1. SETUP ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x1a1a2e);
         
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
         camera.position.set(8, 6, 8);
-        camera.position.set(6, 5, 8);
 
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.shadowMap.enabled = true;
-document.getElementById('canvas-container').appendChild(renderer.domElement);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
 
-        // --- ORBIT CONTROLS (NEW) ---
-        // --- ORBIT CONTROLS ---
-        // This is what makes the 3D world draggable!
-const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        const controls = new OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
-        controls.enableDamping = true; 
-controls.dampingFactor = 0.05;
+        controls.target.set(0, 1, 0);
 
-// --- LIGHTING ---
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-        scene.add(ambientLight);
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-        directionalLight.position.set(10, 10, 5);
-        directionalLight.castShadow = true;
-        scene.add(directionalLight);
+        // Lighting
+        const dirLight = new THREE.DirectionalLight(0xffffff, 2);
+        dirLight.position.set(5, 10, 7);
+        dirLight.castShadow = true;
+        scene.add(dirLight);
+        scene.add(new THREE.AmbientLight(0xffffff, 0.5));
 
-        // --- COMPONENTS ---
-        const base = new THREE.Mesh(new THREE.BoxGeometry(6, 0.3, 6), new THREE.MeshStandardMaterial({ color: 0x2c3e50 }));
-        base.position.y = -2;
-        scene.add(base);
+        // --- 2. ENGINEERING MATERIALS ---
+        const matSteel = new THREE.MeshStandardMaterial({ color: 0x95a5a6, metalness: 0.8, roughness: 0.2 });
+        const matRed = new THREE.MeshStandardMaterial({ color: 0xe74c3c, metalness: 0.3, roughness: 0.6 });
+        const matBlue = new THREE.MeshStandardMaterial({ color: 0x3498db, metalness: 0.3, roughness: 0.6 });
+        const matDark = new THREE.MeshStandardMaterial({ color: 0x2c3e50, metalness: 0.5, roughness: 0.7 });
 
-        const pedal = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.4, 2.5), new THREE.MeshStandardMaterial({ color: 0x34495e }));
-        pedal.position.y = 2;
-        scene.add(pedal);
+        // --- 3. MECHANICAL ASSEMBLY ---
 
-        // Rack Group
+        // A. The Vertical Rack (Moves Up/Down)
         const rackGroup = new THREE.Group();
-        const rackBody = new THREE.Mesh(new THREE.BoxGeometry(0.4, 3, 0.8), new THREE.MeshStandardMaterial({ color: 0x7f8c8d }));
-        rackGroup.add(rackBody);
-        for (let i = 0; i < 12; i++) {
-            const tooth = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.15, 0.8), new THREE.MeshStandardMaterial({ color: 0x7f8c8d }));
-            tooth.position.set(0.3, -1.5 + (i * 0.25), 0);
+        const rackBar = new THREE.Mesh(new THREE.BoxGeometry(0.5, 4, 0.5), matSteel);
+        rackGroup.add(rackBar);
+
+        // Add Teeth to Rack
+        for(let i=0; i<15; i++) {
+            const tooth = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.1, 0.6), matSteel);
+            tooth.position.set(0.3, -1.5 + (i * 0.25), 0); // Spaced 0.25 units apart
             rackGroup.add(tooth);
         }
-        rackGroup.position.set(-2, 0.5, 0);
+        rackGroup.position.set(-1.5, 2, 0); // Start position
         scene.add(rackGroup);
 
-        // Pinion Gear Group (Rotating Part)
-        const light = new THREE.DirectionalLight(0xffffff, 1);
-        light.position.set(5, 10, 5);
-        light.castShadow = true;
-        scene.add(light);
-        scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+        // B. The Pinion (Red Gear - Meshes with Rack)
+        const pinionGroup = new THREE.Group();
+        const pinionCore = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 0.4, 32), matRed);
+        pinionCore.rotation.z = Math.PI/2;
+        pinionGroup.add(pinionCore);
 
-        // --- STATIONARY SHAFT (The Fix) ---
-        // We add this directly to the scene so it doesn't rotate with the gears
-        const shaftGeom = new THREE.CylinderGeometry(0.12, 0.12, 3, 16);
-        const shaftMat = new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.8 });
-        const centralShaft = new THREE.Mesh(shaftGeom, shaftMat);
-        centralShaft.rotation.z = Math.PI / 2;
-        centralShaft.position.set(0.5, 0.5, 0);
-        scene.add(centralShaft);
-
-        // --- ROTATING PINION ---
-const pinionGroup = new THREE.Group();
-        const pinionBody = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 0.6, 32), new THREE.MeshStandardMaterial({ color: 0xe74c3c }));
-        const pinionBody = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 0.5, 32), new THREE.MeshStandardMaterial({ color: 0xe74c3c }));
-pinionBody.rotation.z = Math.PI / 2;
-pinionGroup.add(pinionBody);
-        for (let i = 0; i < 16; i++) {
-            const angle = (i / 16) * Math.PI * 2;
-            const tooth = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.6, 0.2), new THREE.MeshStandardMaterial({ color: 0xe74c3c }));
-            tooth.position.set(Math.cos(angle) * 0.9, 0, Math.sin(angle) * 0.9);
+        // Pinion Teeth
+        const numTeethA = 12;
+        for(let i=0; i<numTeethA; i++) {
+            const angle = (i / numTeethA) * Math.PI * 2;
+            const tooth = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.4, 0.15), matRed);
+            // Math to place teeth in a circle
+            tooth.position.set(Math.cos(angle)*0.8, 0, Math.sin(angle)*0.8);
             tooth.rotation.y = angle;
             pinionGroup.add(tooth);
-        
-        // Add Gear Teeth
-        for(let i=0; i<16; i++){
-            const t = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.5, 0.2), new THREE.MeshStandardMaterial({color: 0xe74c3c}));
-            const angle = (i/16) * Math.PI * 2;
-            t.position.set(Math.cos(angle)*0.85, 0, Math.sin(angle)*0.85);
-            t.rotation.y = angle;
-            pinionGroup.add(t);
-}
-pinionGroup.position.set(-0.7, 0.5, 0);
-scene.add(pinionGroup);
+        }
+        pinionGroup.position.set(-0.5, 1, 0); // Place next to rack
+        scene.add(pinionGroup);
 
-        // STATIONARY SHAFT (MODIFIED: Not a child of Pinion)
-        const shaftGeom = new THREE.CylinderGeometry(0.15, 0.15, 2.5, 16);
-        const shaftMat = new THREE.MeshStandardMaterial({ color: 0x7f8c8d, metalness: 0.9 });
-        const shaft = new THREE.Mesh(shaftGeom, shaftMat);
-        shaft.rotation.z = Math.PI / 2;
-        shaft.position.set(0.3, 0.5, 0); // Positioned between pinion and motor
-        scene.add(shaft);
+        // C. The Follower (Blue Gear - Connected to Motor)
+        // This simulates a gear reduction or speed increase
+        const followerGroup = new THREE.Group();
+        const followerCore = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.4, 32), matBlue);
+        followerCore.rotation.z = Math.PI/2;
+        followerGroup.add(followerCore);
 
-        // Motor
+        const numTeethB = 8;
+        for(let i=0; i<numTeethB; i++) {
+            const angle = (i / numTeethB) * Math.PI * 2;
+            const tooth = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.4, 0.12), matBlue);
+            tooth.position.set(Math.cos(angle)*0.4, 0, Math.sin(angle)*0.4);
+            tooth.rotation.y = angle;
+            followerGroup.add(tooth);
+        }
+        // Place it so teeth interlock with Pinion
+        followerGroup.position.set(0.6, 1, 0); 
+        scene.add(followerGroup);
+
+        // D. The Electric Motor (Driven by Follower)
         const motorGroup = new THREE.Group();
-        const motorBody = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 1.5, 32), new THREE.MeshStandardMaterial({ color: 0x2c3e50 }));
-        motorBody.rotation.z = Math.PI / 2;
+        const motorBody = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 1.5, 32), matDark);
+        motorBody.rotation.z = Math.PI/2;
+        const motorShaft = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.1, 0.1), new THREE.MeshStandardMaterial({color:0xffffff}));
         motorGroup.add(motorBody);
-        motorGroup.position.set(1.3, 0.5, 0);
+        motorGroup.add(motorShaft); // Visual strip to see rotation
+        motorGroup.position.set(2, 1, 0);
         scene.add(motorGroup);
 
-        // --- ELECTRONS & WIRE ---
-        const wireCurve = new THREE.CatmullRomCurve3([
-            new THREE.Vector3(1.3, 0.5, 0.6), new THREE.Vector3(1.5, 1, 1.5),
-            new THREE.Vector3(2.5, 2.5, 3.5), new THREE.Vector3(3, 2.5, 4)
-        ]);
-        const wire = new THREE.Mesh(new THREE.TubeGeometry(wireCurve, 64, 0.05, 8, false), new THREE.MeshStandardMaterial({ color: 0x95a5a6 }));
-        // --- RACK & PEDAL ---
-        const pedal = new THREE.Mesh(new THREE.BoxGeometry(2, 0.2, 2), new THREE.MeshStandardMaterial({color: 0x444444}));
-        pedal.position.y = 2;
-        scene.add(pedal);
-
-        const rack = new THREE.Mesh(new THREE.BoxGeometry(0.3, 3, 0.6), new THREE.MeshStandardMaterial({color: 0x7f8c8d}));
-        rack.position.set(-1.8, 0.5, 0);
-        scene.add(rack);
-
-        // --- MOTOR & WIRE ---
-        const motor = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 1.2, 32), new THREE.MeshStandardMaterial({color: 0x2c3e50}));
-        motor.rotation.z = Math.PI / 2;
-        motor.position.set(1.8, 0.5, 0);
-        scene.add(motor);
-
-        const wireCurve = new THREE.CatmullRomCurve3([new THREE.Vector3(1.8, 0.5, 0.5), new THREE.Vector3(3, 2, 2), new THREE.Vector3(5, 1, 4)]);
-        const wire = new THREE.Mesh(new THREE.TubeGeometry(wireCurve, 20, 0.05, 8, false), new THREE.MeshStandardMaterial({color: 0x333333}));
-scene.add(wire);
-
-        // --- ELECTRONS ---
-const electrons = [];
-        const electronMat = new THREE.MeshStandardMaterial({ color: 0xffff00, emissive: 0xffff00 });
-        for (let i = 0; i < 20; i++) {
-            const e = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 8), electronMat);
-            e.userData = { progress: 0, active: false };
-        for(let i=0; i<15; i++) {
-            const e = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 8), new THREE.MeshBasicMaterial({color: 0xffff00}));
-e.visible = false;
-            e.userData = { active: false, progress: 0 };
-scene.add(e);
-electrons.push(e);
-}
-
-        // --- STATE & LOGIC ---
+        // Connection Shaft (Pinion to Follower? No, usually Pinion -> Follower. Here let's say they mesh)
+        
+        // --- 4. PHYSICS STATE ---
         const state = {
-            pedalPressed: false, pedalPos: 2, targetPedalPos: 2,
-            compSpeed: 5, motorSpeed: 0, electronCount: 0
+            rackY: 2,           // Current Y position
+            targetY: 2,         // Where we want to be
+            velocity: 0
         };
 
-        document.getElementById('press-pedal').onclick = () => {
-            state.pedalPressed = !state.pedalPressed;
-            state.targetPedalPos = state.pedalPressed ? 0.2 : 2;
-            document.getElementById('press-pedal').textContent = state.pedalPressed ? 'Release Pedal' : 'Press Foot Pedal';
-        };
-        // --- ANIMATION & PHYSICS ---
-        const state = { pedalY: 2, targetY: 2, speed: 5, electronCount: 0 };
+        // --- 5. INTERACTION ---
+        const btn = document.getElementById('pedal-btn');
+        btn.addEventListener('mousedown', () => { state.targetY = 0; }); // Push down
+        btn.addEventListener('mouseup', () => { state.targetY = 2; });   // Release
 
-        document.getElementById('press-pedal').onmousedown = () => state.targetY = 0.5;
-        document.getElementById('press-pedal').onmouseup = () => state.targetY = 2;
-document.getElementById('reset').onclick = () => location.reload();
+        // --- 6. ANIMATION LOOP ---
+        function animate() {
+            requestAnimationFrame(animate);
 
-document.getElementById('speed').oninput = (e) => {
-            state.compSpeed = e.target.value;
-            document.getElementById('speed-value').textContent = e.target.value;
-            state.speed = e.target.value;
-            document.getElementById('speed-value').innerText = e.target.value;
-};
-
-        let lastTime = Date.now();
-function animate() {
-requestAnimationFrame(animate);
-            const delta = (Date.now() - lastTime) / 1000;
-            lastTime = Date.now();
-
-            // Physics Update
-            const oldRot = pinionGroup.rotation.y;
-            state.pedalPos += (state.targetPedalPos - state.pedalPos) * 0.1 * state.compSpeed;
-            pedal.position.y = state.pedalPos;
-            rackGroup.position.y = 0.5 - (2 - state.pedalPos);
-            pinionGroup.rotation.y = (2 - state.pedalPos) / 0.8;
-            motorGroup.rotation.x = pinionGroup.rotation.y * 5;
-            state.motorSpeed = Math.abs(pinionGroup.rotation.y - oldRot);
-
-            // Electron Logic
-            if (state.motorSpeed > 0.001) {
-                if (Math.random() < state.motorSpeed * 5) {
-                    const e = electrons.find(el => !el.userData.active);
-                    if (e) { e.userData.active = true; e.userData.progress = 0; e.visible = true; state.electronCount++; }
+            // A. Smooth movement (Linear Interpolation)
+            const oldY = state.rackY;
+            state.rackY += (state.targetY - state.rackY) * 0.1; // 0.1 = Speed factor
             
-            // Smooth movement
-            const lastY = state.pedalY;
-            state.pedalY += (state.targetY - state.pedalY) * 0.1 * state.speed;
+            // B. Move the Rack
+            rackGroup.position.y = state.rackY;
+
+            // C. Calculate Rotation based on linear movement
+            // Delta Y = distance moved this frame
+            const deltaY = oldY - state.rackY; 
             
-            // Link parts
-            pedal.position.y = state.pedalY;
-            rack.position.y = state.pedalY - 1.5;
+            // Formula: Arc Length = Radius * Angle  ->  Angle = Arc / Radius
+            // Pinion Radius is roughly 0.8
+            const rotationA = deltaY / 0.8; 
+
+            pinionGroup.rotation.y += rotationA;
+
+            // D. Gear Ratio Logic
+            // Gear A (Radius 0.8) drives Gear B (Radius 0.4)
+            // Ratio = 0.8 / 0.4 = 2. Gear B spins 2x faster in OPPOSITE direction.
+            const rotationB = -(rotationA * 2);
             
-            const movement = lastY - state.pedalY;
-            pinionGroup.rotation.y += movement * 1.5;
-            
-            // Generate electrons if moving
-            if (Math.abs(movement) > 0.001) {
-                const available = electrons.find(e => !e.userData.active);
-                if (available && Math.random() < 0.2) {
-                    available.userData.active = true;
-                    available.userData.progress = 0;
-                    available.visible = true;
-                    state.electronCount++;
-                    document.getElementById('electron-count').innerText = state.electronCount;
-}
-}
+            followerGroup.rotation.y += rotationB;
+            motorGroup.rotation.x = followerGroup.rotation.y; // Motor spins with Gear B
 
-electrons.forEach(e => {
-if (e.userData.active) {
-e.userData.progress += 0.02;
-@@ -216,12 +215,9 @@ <h3>User Interaction:</h3>
-}
-});
+            // E. Stats
+            const speed = Math.abs(deltaY) * 1000;
+            document.getElementById('rpm').innerText = Math.floor(speed) + " RPM";
+            document.getElementById('energy').innerText = Math.floor(speed * 0.5) + " W";
 
-            // UI
-            document.getElementById('electron-count').textContent = state.electronCount;
-            document.getElementById('motor-rpm').textContent = Math.round(state.motorSpeed * 3600);
-            document.getElementById('current').textContent = Math.round(state.motorSpeed * 100) + ' mA';
-            document.getElementById('motor-rpm').innerText = Math.round(Math.abs(movement) * 600);
+            controls.update();
+            renderer.render(scene, camera);
+        }
 
-            controls.update(); // Update OrbitControls
-            controls.update(); // CRITICAL for dragging
-renderer.render(scene, camera);
-}
-// --- 1. THE TOOTHED RACK ---
-const rackGroup = new THREE.Group();
-const rackBody = new THREE.Mesh(new THREE.BoxGeometry(0.3, 3, 0.6), new THREE.MeshStandardMaterial({color: 0x7f8c8d}));
-rackGroup.add(rackBody);
+        // Handle Resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
 
-// Adding individual teeth to the rack
-for (let i = 0; i < 15; i++) {
-    const rackTooth = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.1, 0.5), new THREE.MeshStandardMaterial({color: 0x7f8c8d}));
-    rackTooth.position.set(0.15, -1.4 + (i * 0.2), 0);
-    rackGroup.add(rackTooth);
-}
-rackGroup.position.set(-1.8, 0.5, 0);
-scene.add(rackGroup);
-
-// --- 2. PINION GEAR (Gear A - Large) ---
-const pinionGroup = new THREE.Group();
-const pinionBody = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 0.4, 32), new THREE.MeshStandardMaterial({ color: 0xe74c3c }));
-pinionBody.rotation.z = Math.PI / 2;
-pinionGroup.add(pinionBody);
-
-for(let i=0; i<16; i++){
-    const t = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.4, 0.15), new THREE.MeshStandardMaterial({color: 0xe74c3c}));
-    const angle = (i/16) * Math.PI * 2;
-    t.position.set(Math.cos(angle)*0.8, 0, Math.sin(angle)*0.8);
-    t.rotation.y = angle;
-    pinionGroup.add(t);
-}
-pinionGroup.position.set(-0.8, 0.5, 0);
-scene.add(pinionGroup);
-
-// --- 3. FOLLOWER GEAR (Gear B - Small) ---
-// This gear connects to the motor and spins faster
-const followerGroup = new THREE.Group();
-const followerBody = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.45, 32), new THREE.MeshStandardMaterial({ color: 0x3498db }));
-followerBody.rotation.z = Math.PI / 2;
-followerGroup.add(followerBody);
-
-for(let i=0; i<8; i++){
-    const t = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.45, 0.1), new THREE.MeshStandardMaterial({color: 0x3498db}));
-    const angle = (i/8) * Math.PI * 2;
-    t.position.set(Math.cos(angle)*0.4, 0, Math.sin(angle)*0.4);
-    t.rotation.y = angle;
-    followerGroup.add(t);
-}
-// Positioned to touch the Large Pinion
-followerGroup.position.set(0.35, 0.5, 0); 
-scene.add(followerGroup);
+        animate();
+    </script>
+</body>
+</html>
