@@ -3,139 +3,654 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shoe Generator - Real Physics Build</title>
+    <title>Shoe Generator - Rack & Pinion Energy Harvesting Simulation</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #1a1a2e; overflow: hidden; }
-        #canvas-container { width: 100vw; height: 100vh; display: block; }
-        #controls { position: absolute; top: 20px; left: 20px; background: rgba(255, 255, 255, 0.95); padding: 20px; border-radius: 12px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3); min-width: 280px; z-index: 100; }
-        h1 { font-size: 18px; margin-bottom: 15px; color: #1e3c72; border-bottom: 2px solid #2a5298; padding-bottom: 8px; }
-        button { width: 100%; padding: 12px; margin: 5px 0; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; text-transform: uppercase; }
-        #press-pedal { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
-        #reset { background: #f39c12; color: white; }
-        input[type="range"] { width: 100%; margin: 8px 0; }
-        .info-display { background: #ecf0f1; padding: 10px; border-radius: 6px; margin-top: 10px; font-size: 12px; }
-        .info-item { display: flex; justify-content: space-between; margin: 5px 0; }
-        .info-value { color: #2a5298; font-weight: 700; }
-        #info { position: absolute; bottom: 20px; left: 20px; background: rgba(255, 255, 255, 0.95); padding: 15px; border-radius: 12px; font-size: 12px; max-width: 280px; z-index: 100; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            overflow: hidden;
+        }
+        
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            display: block;
+        }
+        
+        #controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            min-width: 280px;
+            z-index: 100;
+        }
+        
+        h1 {
+            font-size: 18px;
+            margin-bottom: 15px;
+            color: #1e3c72;
+            border-bottom: 2px solid #2a5298;
+            padding-bottom: 8px;
+        }
+        
+        .control-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        button {
+            width: 100%;
+            padding: 12px;
+            margin: 5px 0;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        #press-pedal {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        #press-pedal:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        #press-pedal:active {
+            transform: translateY(0);
+        }
+        
+        #reset {
+            background: #f39c12;
+            color: white;
+        }
+        
+        #reset:hover {
+            background: #e67e22;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(243, 156, 18, 0.4);
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            margin: 8px 0;
+        }
+        
+        .info-display {
+            background: #ecf0f1;
+            padding: 10px;
+            border-radius: 6px;
+            margin-top: 10px;
+            font-size: 12px;
+        }
+        
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+            padding: 3px 0;
+        }
+        
+        .info-label {
+            font-weight: 600;
+            color: #555;
+        }
+        
+        .info-value {
+            color: #2a5298;
+            font-weight: 700;
+        }
+        
+        #info {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            font-size: 12px;
+            max-width: 280px;
+            z-index: 100;
+        }
+        
+        #info h3 {
+            font-size: 14px;
+            margin-bottom: 8px;
+            color: #1e3c72;
+        }
+        
+        #info p {
+            margin: 5px 0;
+            line-height: 1.4;
+            color: #555;
+        }
     </style>
 </head>
 <body>
     <div id="canvas-container"></div>
+    
     <div id="controls">
         <h1>⚡ Shoe Generator Control</h1>
+        
         <div class="control-group">
             <button id="press-pedal">Press Foot Pedal</button>
             <button id="reset">Reset Simulation</button>
         </div>
+        
         <div class="control-group">
-            <label>Compression Speed: <span id="speed-value">5</span></label>
-            <input type="range" id="speed" min="1" max="10" value="5">
+            <label for="speed">Compression Speed:</label>
+            <input type="range" id="speed" min="1" max="10" value="5" step="1">
+            <span id="speed-value">5</span>
         </div>
+        
         <div class="info-display">
-            <div class="info-item"><span>Electrons:</span> <span class="info-value" id="electron-count">0</span></div>
-            <div class="info-item"><span>Motor RPM:</span> <span class="info-value" id="motor-rpm">0</span></div>
-            <div class="info-item"><span>Current:</span> <span class="info-value" id="current">0 mA</span></div>
+            <div class="info-item">
+                <span class="info-label">Electrons Generated:</span>
+                <span class="info-value" id="electron-count">0</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Motor RPM:</span>
+                <span class="info-value" id="motor-rpm">0</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Current Output:</span>
+                <span class="info-value" id="current">0 mA</span>
+            </div>
         </div>
+    </div>
+    
+    <div id="info">
+        <h3>How It Works:</h3>
+        <p><strong>1. Foot Compression:</strong> Pressing the pedal pushes the rack downward.</p>
+        <p><strong>2. Rack & Pinion:</strong> Linear motion converts to rotational motion via gear teeth engagement.</p>
+        <p><strong>3. Motor Generation:</strong> Rotating motor generates AC electricity.</p>
+        <p><strong>4. Electron Flow:</strong> Yellow spheres represent electron movement through the wire.</p>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
-        // --- SCENE SETUP ---
+        // ============================================
+        // SCENE SETUP
+        // ============================================
+        
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x0a0a1a);
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
-        camera.position.set(5, 4, 6);
-
+        scene.background = new THREE.Color(0x1a1a2e);
+        
+        const camera = new THREE.PerspectiveCamera(
+            75,
+            window.innerWidth / window.innerHeight,
+            0.1,
+            1000
+        );
+        camera.position.set(8, 6, 8);
+        camera.lookAt(0, 0, 0);
+        
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         document.getElementById('canvas-container').appendChild(renderer.domElement);
-
-        // Lighting
-        scene.add(new THREE.AmbientLight(0xffffff, 0.5));
-        const dirLight = new THREE.DirectionalLight(0xffffff, 1);
-        dirLight.position.set(10, 10, 5);
-        scene.add(dirLight);
-
-        // --- MATERIALS ---
-        const matSteel = new THREE.MeshStandardMaterial({ color: 0x7f8c8d, metalness: 0.8, roughness: 0.2 });
-        const matGear = new THREE.MeshStandardMaterial({ color: 0xe74c3c, metalness: 0.5 });
-        const matMotor = new THREE.MeshStandardMaterial({ color: 0x2c3e50, metalness: 0.9 });
-
-        // --- MECHANICAL COMPONENTS ---
-
-        // 1. TOOTHED RACK
-        const rackGroup = new THREE.Group();
-        const rackBody = new THREE.Mesh(new THREE.BoxGeometry(0.4, 4, 0.4), matSteel);
-        rackGroup.add(rackBar = rackBody);
         
-        // Add Real Teeth to Rack (Oriented towards Gear)
-        for(let i=0; i<16; i++) {
-            const tooth = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.08, 0.3), matSteel);
-            tooth.position.set(0.25, -1.8 + (i * 0.25), 0);
+        // ============================================
+        // LIGHTING
+        // ============================================
+        
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+        
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(10, 10, 5);
+        directionalLight.castShadow = true;
+        directionalLight.shadow.mapSize.width = 2048;
+        directionalLight.shadow.mapSize.height = 2048;
+        scene.add(directionalLight);
+        
+        const pointLight = new THREE.PointLight(0x4a90e2, 0.5);
+        pointLight.position.set(-5, 5, 5);
+        scene.add(pointLight);
+        
+        // ============================================
+        // MATERIALS
+        // ============================================
+        
+        const pedalMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x34495e,
+            metalness: 0.3,
+            roughness: 0.7
+        });
+        
+        const rackMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x7f8c8d,
+            metalness: 0.6,
+            roughness: 0.4
+        });
+        
+        const pinionMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0xe74c3c,
+            metalness: 0.7,
+            roughness: 0.3
+        });
+        
+        const motorMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x2c3e50,
+            metalness: 0.8,
+            roughness: 0.2
+        });
+        
+        const wireMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x95a5a6,
+            metalness: 0.5,
+            roughness: 0.5
+        });
+        
+        const electronMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0xffff00,
+            emissive: 0xffff00,
+            emissiveIntensity: 0.5,
+            metalness: 0.1,
+            roughness: 0.3
+        });
+        
+        // ============================================
+        // COMPONENTS
+        // ============================================
+        
+        // Base Platform
+        const baseGeometry = new THREE.BoxGeometry(6, 0.3, 6);
+        const baseMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x2c3e50,
+            metalness: 0.4,
+            roughness: 0.6
+        });
+        const base = new THREE.Mesh(baseGeometry, baseMaterial);
+        base.position.y = -2;
+        base.receiveShadow = true;
+        scene.add(base);
+        
+        // Foot Pedal
+        const pedalGeometry = new THREE.BoxGeometry(2.5, 0.4, 2.5);
+        const pedal = new THREE.Mesh(pedalGeometry, pedalMaterial);
+        pedal.position.set(0, 2, 0);
+        pedal.castShadow = true;
+        scene.add(pedal);
+        
+        // Rack (vertical bar with teeth)
+        const rackGroup = new THREE.Group();
+        
+        // Main rack body
+        const rackBodyGeometry = new THREE.BoxGeometry(0.4, 3, 0.8);
+        const rackBody = new THREE.Mesh(rackBodyGeometry, rackMaterial);
+        rackBody.castShadow = true;
+        rackGroup.add(rackBody);
+        
+        // Rack teeth (simulate gear teeth on one side)
+        const toothGeometry = new THREE.BoxGeometry(0.2, 0.15, 0.8);
+        const numTeeth = 12;
+        for (let i = 0; i < numTeeth; i++) {
+            const tooth = new THREE.Mesh(toothGeometry, rackMaterial);
+            tooth.position.set(0.3, -1.5 + (i * 0.25), 0);
+            tooth.castShadow = true;
             rackGroup.add(tooth);
         }
-        rackGroup.position.set(-1.2, 2, 0);
-        scene.add(rackGroup);
-
-        // 2. PINION & MOTOR ASSEMBLY (Horizontal Axis Rotation)
-        const transmission = new THREE.Group();
-
-        // Pinion Gear (Vertical Orientation)
-        const pinionGroup = new THREE.Group();
-        const gearRadius = 0.75;
-        pinionGroup.add(new THREE.Mesh(new THREE.CylinderGeometry(gearRadius, gearRadius, 0.3, 32), matGear));
         
-        // Pinion Teeth
-        for(let i=0; i<12; i++) {
-            const angle = (i/12) * Math.PI * 2;
-            const tooth = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.3, 0.1), matGear);
-            tooth.position.set(Math.cos(angle)*gearRadius, 0, Math.sin(angle)*gearRadius);
+        rackGroup.position.set(-2, 0.5, 0);
+        scene.add(rackGroup);
+        
+        // Pinion Gear (circular gear that meshes with rack)
+        const pinionGroup = new THREE.Group();
+        
+        // Main gear cylinder
+        const pinionBodyGeometry = new THREE.CylinderGeometry(0.8, 0.8, 0.6, 32);
+        const pinionBody = new THREE.Mesh(pinionBodyGeometry, pinionMaterial);
+        pinionBody.rotation.z = Math.PI / 2;
+        pinionBody.castShadow = true;
+        pinionGroup.add(pinionBody);
+        
+        // Pinion teeth (protruding from circumference)
+        const pinionToothGeometry = new THREE.BoxGeometry(0.15, 0.6, 0.2);
+        const numPinionTeeth = 16;
+        for (let i = 0; i < numPinionTeeth; i++) {
+            const angle = (i / numPinionTeeth) * Math.PI * 2;
+            const tooth = new THREE.Mesh(pinionToothGeometry, pinionMaterial);
+            tooth.position.set(Math.cos(angle) * 0.9, 0, Math.sin(angle) * 0.9);
             tooth.rotation.y = angle;
+            tooth.castShadow = true;
             pinionGroup.add(tooth);
         }
-        pinionGroup.rotation.z = Math.PI / 2; // Flip to vertical
-        transmission.add(pinionGroup);
-
-        // Motor (Horizontal orientation)
-        const motor = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 1.5, 32), matMotor);
-        motor.rotation.z = Math.PI / 2;
-        motor.position.x = 1.2;
-        transmission.add(motor);
-
-        transmission.position.set(-0.3, 1, 0); // Meshed position
-        scene.add(transmission);
-
-        // --- LOGIC & ANIMATION ---
-        const state = { pedalY: 2, targetY: 2, electrons: 0, speed: 5 };
-
-        document.getElementById('press-pedal').onmousedown = () => state.targetY = 0.2;
-        document.getElementById('press-pedal').onmouseup = () => state.targetY = 2;
+        
+        // Shaft connecting pinion to motor
+        const shaftGeometry = new THREE.CylinderGeometry(0.15, 0.15, 2, 16);
+        const shaft = new THREE.Mesh(shaftGeometry, new THREE.MeshStandardMaterial({ 
+            color: 0x7f8c8d,
+            metalness: 0.9,
+            roughness: 0.1
+        }));
+        shaft.rotation.z = Math.PI / 2;
+        shaft.position.x = 1;
+        shaft.castShadow = true;
+        pinionGroup.add(shaft);
+        
+        pinionGroup.position.set(-0.7, 0.5, 0);
+        scene.add(pinionGroup);
+        
+        // Motor (BLDC Generator)
+        const motorGroup = new THREE.Group();
+        
+        // Motor housing
+        const motorBodyGeometry = new THREE.CylinderGeometry(0.6, 0.6, 1.5, 32);
+        const motorBody = new THREE.Mesh(motorBodyGeometry, motorMaterial);
+        motorBody.rotation.z = Math.PI / 2;
+        motorBody.castShadow = true;
+        motorGroup.add(motorBody);
+        
+        // Motor end caps
+        const endCapGeometry = new THREE.CylinderGeometry(0.65, 0.65, 0.1, 32);
+        const endCap1 = new THREE.Mesh(endCapGeometry, new THREE.MeshStandardMaterial({ 
+            color: 0x95a5a6,
+            metalness: 0.8,
+            roughness: 0.3
+        }));
+        endCap1.rotation.z = Math.PI / 2;
+        endCap1.position.x = 0.75;
+        endCap1.castShadow = true;
+        motorGroup.add(endCap1);
+        
+        const endCap2 = endCap1.clone();
+        endCap2.position.x = -0.75;
+        motorGroup.add(endCap2);
+        
+        motorGroup.position.set(1.3, 0.5, 0);
+        scene.add(motorGroup);
+        
+        // Wire Path (curved path from motor)
+        const wireCurve = new THREE.CatmullRomCurve3([
+            new THREE.Vector3(1.3, 0.5, 0.6),    // Start at motor
+            new THREE.Vector3(1.5, 1, 1.5),      // Curve up
+            new THREE.Vector3(2, 2, 2.5),        // Continue curve
+            new THREE.Vector3(2.5, 2.5, 3.5),    // End point
+            new THREE.Vector3(3, 2.5, 4)         // Extended end
+        ]);
+        
+        const wireTubeGeometry = new THREE.TubeGeometry(wireCurve, 64, 0.05, 8, false);
+        const wire = new THREE.Mesh(wireTubeGeometry, wireMaterial);
+        wire.castShadow = true;
+        scene.add(wire);
+        
+        // ============================================
+        // ELECTRONS (Yellow Spheres)
+        // ============================================
+        
+        const electrons = [];
+        const maxElectrons = 20;
+        
+        function createElectron() {
+            const electronGeometry = new THREE.SphereGeometry(0.1, 16, 16);
+            const electron = new THREE.Mesh(electronGeometry, electronMaterial.clone());
+            electron.castShadow = true;
+            electron.userData.progress = 0;
+            electron.userData.active = false;
+            scene.add(electron);
+            return electron;
+        }
+        
+        // Pre-create electron pool
+        for (let i = 0; i < maxElectrons; i++) {
+            electrons.push(createElectron());
+        }
+        
+        // ============================================
+        // ANIMATION STATE
+        // ============================================
+        
+        const state = {
+            pedalPressed: false,
+            pedalPosition: 2,
+            targetPedalPosition: 2,
+            rackPosition: 0.5,
+            pinionRotation: 0,
+            motorRotation: 0,
+            motorSpeed: 0,
+            compressionSpeed: 5,
+            electronCount: 0,
+            activeElectrons: 0,
+            isAnimating: false
+        };
+        
+        // ============================================
+        // PHYSICS CALCULATIONS
+        // ============================================
+        
+        // Rack and Pinion: Linear motion to rotational conversion
+        // Formula: θ = d / r
+        // where θ = rotation angle, d = linear displacement, r = pinion radius
+        const pinionRadius = 0.8;
+        const gearRatio = 5; // Motor spins 5x faster than pinion (simulating gear train)
+        
+        function updatePhysics() {
+            // Update pedal position with smooth interpolation
+            const lerpFactor = 0.1 * state.compressionSpeed;
+            state.pedalPosition += (state.targetPedalPosition - state.pedalPosition) * lerpFactor;
+            pedal.position.y = state.pedalPosition;
+            
+            // Calculate rack displacement from pedal
+            // Pedal at y=2 (rest), y=0 (fully compressed)
+            const rackDisplacement = 2 - state.pedalPosition;
+            state.rackPosition = 0.5 - rackDisplacement;
+            rackGroup.position.y = state.rackPosition;
+            
+            // Convert linear rack motion to pinion rotation
+            // Using: rotation = distance / radius
+            const linearDistance = rackDisplacement;
+            const pinionRotationDelta = linearDistance / pinionRadius;
+            state.pinionRotation = pinionRotationDelta;
+            pinionGroup.rotation.y = state.pinionRotation;
+            
+            // Motor rotates faster due to gear ratio
+            state.motorRotation = state.pinionRotation * gearRatio;
+            motorGroup.rotation.x = state.motorRotation;
+            
+            // Calculate motor RPM based on rotation speed
+            // RPM = (rotations per frame * frames per second * 60)
+            const rotationsPerFrame = Math.abs(state.motorSpeed);
+            state.motorRPM = Math.round(rotationsPerFrame * 60 * 60); // Approximate at 60 FPS
+            
+            // Current output scales with motor speed (simplified model)
+            const currentOutput = Math.round(Math.abs(state.motorSpeed) * 100);
+            
+            // Update UI
+            document.getElementById('motor-rpm').textContent = state.motorRPM;
+            document.getElementById('current').textContent = currentOutput + ' mA';
+        }
+        
+        // ============================================
+        // ELECTRON FLOW ANIMATION
+        // ============================================
+        
+        function updateElectrons(deltaTime) {
+            // Generate new electrons when motor is spinning
+            if (state.motorSpeed > 0.001 && state.activeElectrons < maxElectrons) {
+                const electronSpawnRate = state.motorSpeed * 10;
+                if (Math.random() < electronSpawnRate * deltaTime) {
+                    spawnElectron();
+                }
+            }
+            
+            // Update existing electrons
+            electrons.forEach(electron => {
+                if (!electron.userData.active) return;
+                
+                // Move electron along wire curve
+                electron.userData.progress += state.motorSpeed * 0.5 * deltaTime * 60;
+                
+                if (electron.userData.progress >= 1) {
+                    // Electron reached end of wire
+                    electron.userData.active = false;
+                    electron.visible = false;
+                    state.activeElectrons--;
+                } else {
+                    // Update position along curve
+                    const point = wireCurve.getPoint(electron.userData.progress);
+                    electron.position.copy(point);
+                    
+                    // Pulse effect based on current
+                    const pulse = 1 + Math.sin(Date.now() * 0.01 + electron.userData.progress * 10) * 0.3;
+                    electron.scale.setScalar(pulse);
+                    
+                    // Color intensity based on speed
+                    const intensity = 0.3 + state.motorSpeed * 10;
+                    electron.material.emissiveIntensity = Math.min(intensity, 1);
+                }
+            });
+        }
+        
+        function spawnElectron() {
+            // Find inactive electron from pool
+            const electron = electrons.find(e => !e.userData.active);
+            if (!electron) return;
+            
+            electron.userData.active = true;
+            electron.userData.progress = 0;
+            electron.visible = true;
+            state.activeElectrons++;
+            state.electronCount++;
+            
+            document.getElementById('electron-count').textContent = state.electronCount;
+        }
+        
+        // ============================================
+        // CONTROLS
+        // ============================================
+        
+        document.getElementById('press-pedal').addEventListener('click', () => {
+            if (state.pedalPressed) {
+                // Release pedal
+                state.targetPedalPosition = 2;
+                state.pedalPressed = false;
+                document.getElementById('press-pedal').textContent = 'Press Foot Pedal';
+            } else {
+                // Press pedal
+                state.targetPedalPosition = 0.2;
+                state.pedalPressed = true;
+                state.isAnimating = true;
+                document.getElementById('press-pedal').textContent = 'Release Pedal';
+            }
+        });
+        
+        document.getElementById('reset').addEventListener('click', () => {
+            state.pedalPressed = false;
+            state.targetPedalPosition = 2;
+            state.pedalPosition = 2;
+            state.rackPosition = 0.5;
+            state.pinionRotation = 0;
+            state.motorRotation = 0;
+            state.motorSpeed = 0;
+            state.electronCount = 0;
+            state.activeElectrons = 0;
+            state.isAnimating = false;
+            
+            // Hide all electrons
+            electrons.forEach(electron => {
+                electron.userData.active = false;
+                electron.visible = false;
+            });
+            
+            // Reset UI
+            document.getElementById('electron-count').textContent = '0';
+            document.getElementById('motor-rpm').textContent = '0';
+            document.getElementById('current').textContent = '0 mA';
+            document.getElementById('press-pedal').textContent = 'Press Foot Pedal';
+        });
+        
+        document.getElementById('speed').addEventListener('input', (e) => {
+            state.compressionSpeed = parseInt(e.target.value);
+            document.getElementById('speed-value').textContent = e.target.value;
+        });
+        
+        // ============================================
+        // ANIMATION LOOP
+        // ============================================
+        
+        let lastTime = Date.now();
         
         function animate() {
             requestAnimationFrame(animate);
             
-            const lastY = state.pedalY;
-            state.pedalY += (state.targetY - state.pedalY) * 0.1 * state.speed;
+            const currentTime = Date.now();
+            const deltaTime = (currentTime - lastTime) / 1000; // Convert to seconds
+            lastTime = currentTime;
             
-            // Move Rack
-            rackGroup.position.y = state.pedalY - 1;
+            // Calculate motor angular velocity from position changes
+            const oldMotorRotation = motorGroup.rotation.x;
+            updatePhysics();
+            const newMotorRotation = motorGroup.rotation.x;
+            state.motorSpeed = Math.abs(newMotorRotation - oldMotorRotation);
             
-            // Physics: Rotation = Distance / Radius
-            const deltaY = lastY - state.pedalY;
-            const rotationDelta = deltaY / gearRadius;
+            // Decay motor speed when pedal is released
+            if (!state.pedalPressed && state.motorSpeed > 0.001) {
+                state.motorSpeed *= 0.95;
+            } else if (!state.pedalPressed && state.motorSpeed <= 0.001) {
+                state.motorSpeed = 0;
+            }
             
-            // Vertical Rack translates to X-axis rotation of transmission
-            transmission.rotation.x += rotationDelta;
-
-            // Stats Update
-            const rpm = Math.abs(deltaY) * 6000;
-            document.getElementById('motor-rpm').innerText = Math.round(rpm);
-            document.getElementById('current').innerText = Math.round(rpm * 0.2) + " mA";
-
+            // Update electron flow
+            updateElectrons(deltaTime);
+            
+            // Auto-rotate camera for better view
+            const time = Date.now() * 0.0001;
+            camera.position.x = Math.cos(time) * 8;
+            camera.position.z = Math.sin(time) * 8;
+            camera.lookAt(0, 0.5, 0);
+            
             renderer.render(scene, camera);
         }
+        
+        // ============================================
+        // WINDOW RESIZE HANDLER
+        // ============================================
+        
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+        
+        // Start animation
         animate();
+        
+        // ============================================
+        // CONSOLE INFO
+        // ============================================
+        
+        console.log('🔌 Shoe Generator Simulation Loaded');
+        console.log('📐 Physics Model:');
+        console.log('  - Pinion Radius:', pinionRadius, 'units');
+        console.log('  - Gear Ratio:', gearRatio + ':1');
+        console.log('  - Rotation Formula: θ = d / r');
+        console.log('  - Power Generation: P ∝ ω (angular velocity)');
     </script>
 </body>
 </html>
